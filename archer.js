@@ -114,6 +114,9 @@
   // 找某張卡片下方的「專注」小按鈕
   const actBtn = (card, word) => {
     // 用位置找：卡片正下方、水平位置最接近的「專注／放逐」按鈕
+    const acts = [...document.querySelectorAll('.pk-acts')].filter(vis);
+    const scope = (card.parentElement && card.parentElement.querySelectorAll('button.pk-card').length === 1 && card.parentElement.querySelector('.pk-acts')) || acts[cards().indexOf(card)];
+    if (scope) { const els = [...scope.querySelectorAll('button, a, div, span')].filter(e => vis(e) && e.textContent.includes(word) && e.textContent.trim().length <= 8); const hit = els.find(e => e.tagName === 'BUTTON') || els.find(e => ![...e.children].some(c => c.textContent.includes(word))) || els[0]; if (hit) return hit.closest('button') || hit; }
     const cr = card.getBoundingClientRect(), cx = cr.x + cr.width / 2;
     const cands = [...document.querySelectorAll('button, a, div, span')].filter(e => vis(e) && !card.contains(e) && e.textContent.includes(word) && e.textContent.trim().length <= 8 && ![...e.children].some(c => c.textContent.includes(word) && c.tagName !== 'BUTTON'));
     const below = cands.filter(e => { const r = e.getBoundingClientRect(); return r.y >= cr.y + cr.height * 0.5; });
@@ -135,11 +138,11 @@
         if (!isLevelUp) for (const key of CFG.chestMust) { const hit = ranked.find(r => r.t.includes(key)); if (hit) { pick = hit; why = '寶箱優先：' + key; break; } }
         for (const name of CFG.banish || []) {
           if (banished.has(name)) continue;
-          const hit = live.find(c => hasName(c, name));
+          const hit = live.find(c => nameHit(c, name));
           if (!hit) continue;
           const bb = actBtn(hit, '放逐');
           if (bb) { banished.add(name); log('放逐：' + name); bb.click(); setTimeout(() => { pickBusy = false; }, 1200); return; }
-          log('找不到 ' + name + ' 的放逐按鈕');
+          log('找不到 ' + name + ' 的放逐按鈕'); window.__roDbg = live.map(c => c.innerText.replace(/\s+/g, ' ').slice(0, 40));
         }
         for (const key of [].concat(CFG.focusOn || [])) {
           if (focused.has(key)) continue;
@@ -338,6 +341,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-20c 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-20d 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
