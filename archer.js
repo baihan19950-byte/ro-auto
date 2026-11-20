@@ -11,6 +11,8 @@
     prefer: ['火焰箭', '目標', '傷害', '攻擊速度'],
     preferBase: 200,
     avoid: [],
+    focusOn: [],   // 每局第一次出現這張卡時，先點它下面的「專注」
+    banish: [],    // 出現時各點一次「放逐」
     stepMs: 400, holdMs: 200, speed: true, chest: true, chestStopMs: 5000, chestNear: 70, chestShow: true,
     user: (window.RO_LOGIN || {}).user,
     pass: (window.RO_LOGIN || {}).pass,
@@ -107,17 +109,46 @@
     CFG.avoid.forEach((k) => { if (t.includes(k)) s -= 500; });
     return { s, t };
   };
-  let pickBusy = false;
+  let pickBusy = false, swapDone = false, banished = new Set(), focused = new Set();
+  const nameHit = (c, key) => hasName(c, key) || lines(c).some(l => l.length <= 8 && l.includes(key));
+  // 找某張卡片下方的「專注」小按鈕
+  const actBtn = (card, word) => {
+    // 用位置找：卡片正下方、水平位置最接近的「專注／放逐」按鈕
+    const cr = card.getBoundingClientRect(), cx = cr.x + cr.width / 2;
+    const cands = [...document.querySelectorAll('button, a, div, span')].filter(e => vis(e) && !card.contains(e) && e.textContent.includes(word) && e.textContent.trim().length <= 8 && ![...e.children].some(c => c.textContent.includes(word) && c.tagName !== 'BUTTON'));
+    const below = cands.filter(e => { const r = e.getBoundingClientRect(); return r.y >= cr.y + cr.height * 0.5; });
+    const pool = below.length ? below : cands;
+    pool.sort((a, b) => { const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect(); return Math.abs(ra.x + ra.width / 2 - cx) - Math.abs(rb.x + rb.width / 2 - cx); });
+    const best = pool[0];
+    if (!best) return null;
+    return best.closest('button') || best;
+  };
   const doPick = () => {
     if (pickBusy) return;
     pickBusy = true;
     setTimeout(() => {
       const live = cards();
       if (live.length) {
-        const ranked = live.map(c => ({ c, ...score(c) })).sort((a, b) => b.s - a.s);
+        let ranked = live.map(c => ({ c, ...score(c) })).sort((a, b) => b.s - a.s); const ok = ranked.filter(r => !CFG.avoid.some(k => r.t.includes(k))); if (ok.length) ranked = ok;
         let pick = null, why = '分數最高';
         const isLevelUp = /Level\s*Up/i.test(document.body.innerText);
         if (!isLevelUp) for (const key of CFG.chestMust) { const hit = ranked.find(r => r.t.includes(key)); if (hit) { pick = hit; why = '寶箱優先：' + key; break; } }
+        for (const name of CFG.banish || []) {
+          if (banished.has(name)) continue;
+          const hit = live.find(c => hasName(c, name));
+          if (!hit) continue;
+          const bb = actBtn(hit, '放逐');
+          if (bb) { banished.add(name); log('放逐：' + name); bb.click(); setTimeout(() => { pickBusy = false; }, 1200); return; }
+          log('找不到 ' + name + ' 的放逐按鈕');
+        }
+        for (const key of [].concat(CFG.focusOn || [])) {
+          if (focused.has(key)) continue;
+          const sw = ranked.find(r => nameHit(r.c, key));
+          if (!sw) continue;
+          const fb = actBtn(sw.c, '專注');
+          if (fb) { focused.add(key); log(key + ' 首次出現：點 專注'); fb.click(); setTimeout(() => { pickBusy = false; }, 1200); return; }
+          log('找不到 ' + key + ' 的專注按鈕，照常選卡');
+        }
         if (!pick) for (const key of CFG.must) { const hit = ranked.find(r => hasName(r.c, key)); if (hit) { pick = hit; why = '優先技能：' + key; break; } }
         pick = pick || ranked[0];
         log('選卡 →', why, '｜', pick.t.slice(0, 30));
@@ -262,7 +293,7 @@
     }
 
     const back = findText('返回角色') || findText('回到角色');
-    if (back) { release(); setState('結算'); if (now - lastAct > 1500) { lastAct = now; log('點 回到角色'); back.click(); } return; }
+    if (back) { release(); setState('結算'); if (now - lastAct > 1500) { lastAct = now; log('點 回到角色'); swapDone = false; banished.clear(); focused.clear(); back.click(); } return; }
     const enter = [...document.querySelectorAll('button, a, div, span')].find(b => vis(b) && /^[✔✓\s]*入場$/.test(b.textContent.trim()));
     if (enter) { release(); setState('高難度提醒'); if (now - lastAct > 1500) { lastAct = now; log('點 入場'); enter.click(); } return; }
     const field = findText('前往野外');
@@ -307,6 +338,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-20b 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-20c 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
