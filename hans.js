@@ -23,6 +23,21 @@
     speed: true,   // 進戰場後自動把 1x 切成 2x
     log: true,
   };
+  const CFG_KEY = 'roCfg_' + location.host;
+  const CFG_FIELDS = [
+    ['map', '地圖', 'text'],
+    ['must', '技能優先（順序）', 'list'],
+    ['focusOn', '專注', 'list'],
+    ['banish', '放逐', 'list'],
+    ['avoid', '永遠不選', 'list'],
+    ['chestMust', '寶箱優先（順序）', 'list'],
+    ['holdMs', '繞圈大小（數字越大圈越大）', 'num'],
+    ['stepMs', '每步間隔（毫秒）', 'num'],
+    ['circle', '繞圈（關掉＝站著不動）', 'bool'],
+    ['speed', '進戰鬥自動 2x', 'bool'],
+    ['chest', '看到箱子跑過去', 'bool'],
+  ].filter(f => f[0] in CFG);
+  try { const sv = JSON.parse(localStorage.getItem(CFG_KEY) || '{}'); for (const [k] of CFG_FIELDS) if (k in sv) CFG[k] = sv[k]; } catch (e) {}
   const SMALL = /iPhone|iPad|Android/i.test(navigator.userAgent) || Math.min(innerWidth, innerHeight) < 600;
   const badge = (() => { let b = document.getElementById('ro-badge'); if (!b) { b = document.createElement('div'); b.id = 'ro-badge'; b.style.cssText = SMALL ? 'position:fixed;left:6px;bottom:6px;z-index:2147483647;background:rgba(0,0,0,.7);color:#fff;font:bold 12px sans-serif;padding:6px 10px;border-radius:8px;border:1px solid #fff;max-width:60vw;cursor:pointer;user-select:none' : 'position:fixed;left:10px;bottom:10px;z-index:2147483647;background:rgba(0,0,0,.8);color:#fff;font:bold 22px sans-serif;padding:16px 24px;border-radius:14px;border:3px solid #fff;max-width:80vw;min-width:260px;cursor:pointer;user-select:none'; document.body.appendChild(b); } b.onclick = () => window.roToggle?.(); return b; })();
   const log = (...a) => { if (CFG.log) console.log('[RO]', ...a); badge.textContent = 'RO自動：' + a.join(' ').slice(0, 40) + '（點我暫停）'; };
@@ -184,6 +199,57 @@
     }
     e.onclick = () => { release(); location.reload(); };
   })();
+  (() => {
+    let g = document.getElementById('ro-cfgbtn');
+    if (!g) {
+      g = document.createElement('div');
+      g.id = 'ro-cfgbtn';
+      g.textContent = '⚙ 設定';
+      g.style.cssText = SMALL ? 'position:fixed;right:6px;bottom:82px;z-index:2147483647;background:rgba(60,60,60,.85);color:#fff;font:bold 13px sans-serif;padding:7px 10px;border-radius:8px;border:1px solid #fff;cursor:pointer;user-select:none' : 'position:fixed;right:10px;bottom:210px;z-index:2147483647;background:rgba(60,60,60,.9);color:#fff;font:bold 24px sans-serif;padding:16px 22px;border-radius:14px;border:3px solid #fff;cursor:pointer;user-select:none';
+      document.body.appendChild(g);
+    }
+    g.onclick = () => {
+      let p = document.getElementById('ro-cfgpanel');
+      if (p) { p.remove(); return; }
+      const wasPaused = paused; paused = true; release();
+      p = document.createElement('div');
+      p.id = 'ro-cfgpanel';
+      const fs = SMALL ? 15 : 22;
+      p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 12 : 24) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(760px,90vw)') + ';max-height:88vh;overflow:auto;box-sizing:border-box';
+      ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
+      const title = document.createElement('div');
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      p.appendChild(title);
+      const inputs = {};
+      for (const [k, label, type] of CFG_FIELDS) {
+        const row = document.createElement('label');
+        row.style.cssText = 'display:block;margin:8px 0';
+        const t = document.createElement('div'); t.textContent = label; t.style.cssText = 'font-weight:bold;margin-bottom:3px';
+        const inp = document.createElement('input');
+        if (type === 'bool') { inp.type = 'checkbox'; inp.checked = !!CFG[k]; inp.style.cssText = 'width:' + fs + 'px;height:' + fs + 'px;vertical-align:middle;margin-right:8px'; row.appendChild(inp); t.style.display = 'inline'; row.appendChild(t); }
+        else { inp.type = type === 'num' ? 'number' : 'text'; inp.value = type === 'list' ? (CFG[k] || []).join('，') : CFG[k]; inp.style.cssText = 'width:100%;box-sizing:border-box;font-size:' + fs + 'px;padding:6px;border:1px solid #888;border-radius:6px'; row.appendChild(t); row.appendChild(inp); }
+        inputs[k] = [inp, type];
+        p.appendChild(row);
+      }
+      const tip = document.createElement('div'); tip.textContent = '清單用逗號隔開，前面的優先。'; tip.style.cssText = 'color:#666;font-size:.8em;margin:6px 0 10px';
+      p.appendChild(tip);
+      const close = () => { p.remove(); paused = wasPaused; if (!paused) { state = ''; log('繼續執行'); } else badge.textContent = 'RO自動：已暫停（點我繼續）'; };
+      const btn = (txt, bg, fn) => { const b = document.createElement('button'); b.textContent = txt; b.style.cssText = 'font:bold ' + fs + 'px sans-serif;padding:8px 16px;margin:4px 8px 0 0;border:0;border-radius:8px;color:#fff;background:' + bg + ';cursor:pointer'; b.onclick = fn; p.appendChild(b); };
+      btn('儲存', '#2a7', () => {
+        const out = {};
+        for (const k in inputs) {
+          const [inp, type] = inputs[k];
+          out[k] = type === 'bool' ? inp.checked : type === 'num' ? (Number(inp.value) || 0) : type === 'list' ? inp.value.split(/[,，、\s]+/).filter(Boolean) : inp.value.trim();
+        }
+        Object.assign(CFG, out);
+        try { localStorage.setItem(CFG_KEY, JSON.stringify(out)); } catch (e) {}
+        close(); log('設定已儲存');
+      });
+      btn('取消', '#888', close);
+      btn('恢復預設', '#c44', () => { try { localStorage.removeItem(CFG_KEY); } catch (e) {} location.reload(); });
+      document.body.appendChild(p);
+    };
+  })();
   const loop = () => {
     if (paused) return;
     const now = Date.now();
@@ -304,6 +370,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-20a 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-20b 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
