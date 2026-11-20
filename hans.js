@@ -3,7 +3,7 @@
 (() => {
   window.stopAll?.(); window.stopAutoPick?.(); window.stopCircle?.();
   const CFG = {
-    map: '失事輪',
+    map: '柏伊亞嵐島',
     must: ['雙手劍', '狂擊', '霸體', '怒爆', '劍刃之舞'],
     banish: ['挑釁', '恐嚇吶喊', '快速恢復', '快速回復'],   // 出現時各點一次「放逐」
     focusOn: ['雙手劍', '採集'],    // 每局第一次出現這張卡時，先點它下面的「專注」按鈕
