@@ -170,7 +170,7 @@
   // ---- 主迴圈 ----
   // ---- 撿紫光／金光掉落 ----
   const lootOff = document.createElement('canvas'); const lootCtx = lootOff.getContext('2d', { willReadFrequently: true });
-  let lootRes = null, lootBusy = false, lastLootScan = 0, lootStart = 0, lootIgnore = 0, lootUntil = 0;
+  let lootLast = null, lootRes = null, lootBusy = false, lastLootScan = 0, lootStart = 0, lootIgnore = 0, lootUntil = 0;
   const scanLoot = () => {
     if (lootBusy) return; lootBusy = true;
     requestAnimationFrame(() => {
@@ -200,15 +200,15 @@
           const [gx, gy] = kk.split(',').map(Number);
           for (let ax = -1; ax <= 1; ax++) for (let ay = -1; ay <= 1; ay++) { const nk = (gx + ax) + ',' + (gy + ay); if (!seen.has(nk) && cells.has(nk)) { seen.add(nk); st.push(nk); } }
         }
-        if (b.n < 25) continue;
+        if (b.n < 25 || b.n > 500) continue;   // 太小是雜點，太大是技能特效
         const bw = b.x1 - b.x0 + 1, bh = b.y1 - b.y0 + 1;
         if (bh < bw * 1.2) continue;   // 光柱是直的，數字、圖示不算
         const x = b.x / b.n, y = b.y1 - 2, dx = (x - cx) * SC, dy = (y - cy) * SC, dd = Math.hypot(dx, dy);
-        if (dd < 45) continue;   // 角色自己
+        if (dd < 70) continue;   // 角色自己
         const sc = dd - (b.g > b.n / 2 ? 300 : 0);   // 金光優先
         if (sc < bd) { bd = sc; best = { dx, dy, dd, gold: b.g > b.n / 2, sx: r.x + x * SC, sy: r.y + y * SC }; }
       }
-      lootRes = best;
+      lootRes = best; window.__roLoot = best;
     });
   };
   let lastSpeed = 0, lastPick = 0, pickTries = 0; const chOff = document.createElement('canvas'); const chCtx = chOff.getContext('2d', { willReadFrequently: true }); let chestRes = null, chestScanBusy = false, lastChestScan = 0, chestUntil = 0, chestIgnore = 0, chestStart = 0; const chestMark = (c) => { if (!CFG.chestShow) return; let m = document.getElementById('ro-chest'); if (!m) { m = document.createElement('div'); m.id = 'ro-chest'; m.style.cssText = 'position:fixed;width:40px;height:40px;border:3px solid red;border-radius:6px;pointer-events:none;z-index:2147483646'; document.body.appendChild(m); } m.style.left = (c.sx - 20) + 'px'; m.style.top = (c.sy - 20) + 'px'; m.style.display = 'block'; clearTimeout(m._t); m._t = setTimeout(() => { m.style.display = 'none'; }, 500); }; const scanChest = () => { if (chestScanBusy) return; chestScanBusy = true; requestAnimationFrame(() => { chestScanBusy = false; lastChestScan = Date.now(); const cv = document.querySelector('canvas.world3d') || document.querySelector('canvas'); if (!cv) { chestRes = null; return; } const r = cv.getBoundingClientRect(), SC = 3; const w = Math.max(1, Math.round(r.width / SC)), h = Math.max(1, Math.round(r.height / SC)); chOff.width = w; chOff.height = h; try { chCtx.drawImage(cv, 0, 0, w, h); } catch (e) { chestRes = null; return; } const d = chCtx.getImageData(0, 0, w, h).data; let chLit = 0; const gl = new Uint8Array(w * h); const cells = new Map(); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y * w + x) * 4, R = d[i], G = d[i + 1], B = d[i + 2]; if (R + G + B > 30) chLit++; if (R >= 150 && G >= 135 && Math.abs(R - G) <= 30 && R - B >= 60) gl[y * w + x] = 1; const dayC = R > 90 && R < 235 && R - G >= 30 && G >= B - 5 && R - B >= 45 && R >= G * 1.3 && R <= G * 2.3; const nightC = R >= 55 && R <= 135 && R - G >= 10 && R - G <= 35 && B - G >= -3 && B - G <= 14 && R - B >= 3; if (!dayC && !nightC) continue; const key = ((x / 3) | 0) + ',' + ((y / 3) | 0); const c = cells.get(key) || { n: 0, x: 0, y: 0, my: 0 }; c.n++; c.x += x; c.y += y; if (y > c.my) c.my = y; cells.set(key, c); } if (chLit < w * h * 0.1) { if (!window.__roBlankWarn) { window.__roBlankWarn = 1; log('讀不到遊戲畫面，箱子功能無效'); } chestRes = null; return; } const seen = new Set(); let best = null, bd = 1e9; const cx = w / 2, cy = h / 2; for (const [key] of cells) { if (seen.has(key)) continue; seen.add(key); const b = { n: 0, x: 0, y: 0, my: 0 }, st = [key]; while (st.length) { const kk = st.pop(), cc = cells.get(kk); b.n += cc.n; b.x += cc.x; b.y += cc.y; if (cc.my > b.my) b.my = cc.my; const [gx, gy] = kk.split(',').map(Number); for (let ax = -1; ax <= 1; ax++) for (let ay = -1; ay <= 1; ay++) { const nk = (gx + ax) + ',' + (gy + ay); if (!seen.has(nk) && cells.has(nk)) { seen.add(nk); st.push(nk); } } } if (b.n < 12 || b.n > 400) continue; const x = b.x / b.n, y = b.y / b.n; const dx = (x - cx) * SC, dy = (y - cy) * SC, dd = Math.hypot(dx, dy); if (dd < 55) continue; let g = 0; for (let gy = b.my - 3; gy <= b.my + 5; gy++) for (let gx = (x | 0) - 6; gx <= (x | 0) + 6; gx++) if (gx >= 0 && gy >= 0 && gx < w && gy < h && gl[gy * w + gx]) g++; const sc = dd - (g >= 5 ? 250 : 0); if (sc < bd) { bd = sc; best = { dx, dy, n: b.n, g, sx: r.x + x * SC, sy: r.y + y * SC }; } } chestRes = best; }); };  let state = '', circleI = 0, lastCircle = 0, lastAct = 0, walkStart = 0, randUntil = 0;
@@ -266,7 +266,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 12 : 24) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(760px,90vw)') + ';max-height:88vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-21f'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-21g'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -404,10 +404,11 @@
       if (now - lastLootScan > 300) scanLoot();
       if (now < lootUntil) { setState('撿掉落'); if (now > lootUntil - 400) release(); return; }
       const lt = lootRes;
+      if (!lt && lootStart && lootLast && lootLast.dd < 140) { lootUntil = now + 900; lootIgnore = lootUntil + 1500; lootStart = 0; lootLast = null; return; }   // 已經走到旁邊（光柱跟角色重疊），再往前一點撿起來
       if (lt && now > lootIgnore) {
-        if (!lootStart) { lootStart = now; log('看到' + (lt.gold ? '金光' : '紫光') + '，過去撿'); }
+        lootLast = lt; if (!lootStart) { lootStart = now; log('看到' + (lt.gold ? '金光' : '紫光') + '，過去撿'); }
         if (typeof chestMark === 'function') chestMark(lt);
-        if (lt.dd < 65) { lootUntil = now + 900; lootIgnore = lootUntil + 1500; lootStart = 0; lootRes = null; return; }
+        if (lt.dd < 90) { lootUntil = now + 900; lootIgnore = lootUntil + 1500; lootStart = 0; lootRes = null; return; }
         if (now - lootStart > 7000) { lootIgnore = now + 5000; lootStart = 0; log('撿不到，先放棄'); }
         else { setState('跑去撿掉落'); const k = []; if (lt.dy < -12) k.push('ArrowUp'); if (lt.dy > 12) k.push('ArrowDown'); if (lt.dx < -12) k.push('ArrowLeft'); if (lt.dx > 12) k.push('ArrowRight'); hold(k); return; }
       } else lootStart = 0;
@@ -422,6 +423,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-21f 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-21g 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
