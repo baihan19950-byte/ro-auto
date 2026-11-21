@@ -183,8 +183,8 @@
       const wantP = (CFG.loot || []).includes('紫'), wantG = (CFG.loot || []).includes('金');
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4, R = d[i], G = d[i + 1], B = d[i + 2];
-        const isP = wantP && R >= 115 && R - G >= 30 && B - G >= 25 && Math.abs(R - B) <= 28;
-        const isG = wantG && R >= 200 && G >= 160 && B <= 110 && R - G <= 60 && R - B >= 110;
+        const isP = wantP && B - G >= 35 && R - G >= 15 && B >= R - 15 && B >= 95 && R >= 60;
+        const isG = wantG && R >= 140 && R - G >= 30 && R - G <= 75 && G - B >= 30 && B <= 95;
         if (!isP && !isG) continue;
         const key = ((x / 2) | 0) + ',' + ((y / 2) | 0);
         const c = cells.get(key) || { n: 0, x: 0, y: 0, x0: x, x1: x, y0: y, y1: y, g: 0 };
@@ -200,10 +200,11 @@
           const [gx, gy] = kk.split(',').map(Number);
           for (let ax = -1; ax <= 1; ax++) for (let ay = -1; ay <= 1; ay++) { const nk = (gx + ax) + ',' + (gy + ay); if (!seen.has(nk) && cells.has(nk)) { seen.add(nk); st.push(nk); } }
         }
-        if (b.n < 15) continue;
+        if (b.n < 25) continue;
         const bw = b.x1 - b.x0 + 1, bh = b.y1 - b.y0 + 1;
         if (bh < bw * 1.2) continue;   // 光柱是直的，數字、圖示不算
         const x = b.x / b.n, y = b.y1 - 2, dx = (x - cx) * SC, dy = (y - cy) * SC, dd = Math.hypot(dx, dy);
+        if (dd < 45) continue;   // 角色自己
         const sc = dd - (b.g > b.n / 2 ? 300 : 0);   // 金光優先
         if (sc < bd) { bd = sc; best = { dx, dy, dd, gold: b.g > b.n / 2, sx: r.x + x * SC, sy: r.y + y * SC }; }
       }
@@ -265,7 +266,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 12 : 24) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(760px,90vw)') + ';max-height:88vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-21e'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-21f'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -401,12 +402,12 @@
     setState('地圖中：繞圈'); if (CFG.pickup && now - lastPick > 1200 && pickTries < 10) { const pb = [...document.querySelectorAll('button, div, span')].filter(e => vis(e) && /^撿取\s*[：:]/.test(e.textContent.trim()) && e.textContent.trim().length <= 12).sort((a, b) => area(a) - area(b))[0]; if (pb && !pb.textContent.includes(CFG.pickup)) { lastPick = now; pickTries++; log('撿取切換 → ' + CFG.pickup); (pb.closest('button') || pb).click(); } else if (pb) pickTries = 0; } if (CFG.speed && now - lastSpeed > 2000) { const sp = allExact('1x')[0]; if (sp) { lastSpeed = now; log('切換速度 1x → 2x'); sp.click(); } }
     if ((CFG.loot || []).length) {
       if (now - lastLootScan > 300) scanLoot();
-      if (now < lootUntil) { setState('撿掉落'); return; }
+      if (now < lootUntil) { setState('撿掉落'); if (now > lootUntil - 400) release(); return; }
       const lt = lootRes;
       if (lt && now > lootIgnore) {
         if (!lootStart) { lootStart = now; log('看到' + (lt.gold ? '金光' : '紫光') + '，過去撿'); }
         if (typeof chestMark === 'function') chestMark(lt);
-        if (lt.dd < 30) { lootUntil = now + 700; lootIgnore = lootUntil + 1500; lootStart = 0; lootRes = null; release(); return; }
+        if (lt.dd < 65) { lootUntil = now + 900; lootIgnore = lootUntil + 1500; lootStart = 0; lootRes = null; return; }
         if (now - lootStart > 7000) { lootIgnore = now + 5000; lootStart = 0; log('撿不到，先放棄'); }
         else { setState('跑去撿掉落'); const k = []; if (lt.dy < -12) k.push('ArrowUp'); if (lt.dy > 12) k.push('ArrowDown'); if (lt.dx < -12) k.push('ArrowLeft'); if (lt.dx > 12) k.push('ArrowRight'); hold(k); return; }
       } else lootStart = 0;
@@ -421,6 +422,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-21e 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-21f 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
