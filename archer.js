@@ -6,6 +6,7 @@
     map: '普隆德拉原野',
     lobby: '阿斯嘉特',   // 出現「選擇大廳」時要點的大廳
     pickup: '史詩以上',   // 戰鬥中「撿取：」要切到這個（空白＝不動）
+    loot: ['紫', '金'],   // 看到這些顏色的光柱就跑過去撿（紫、金）
     must: ['弓', '二連矢', '箭雨'],
     chestMust: ['護甲', '防禦'],
     rarity: { '傳說': 400, '神話': 400, '史詩': 300, '稀有': 200, '優良': 150, '精良': 150, '技能': 100, '普通': 50 },
@@ -26,6 +27,7 @@
     ['map', '地圖', 'text'],
     ['lobby', '大廳（出現「選擇大廳」時點這個）', 'text'],
     ['pickup', '撿取（例：全部、史詩以上；空白＝不動）', 'text'],
+    ['loot', '跑去撿的光（紫，金；空白＝不撿）', 'list'],
     ['must', '技能優先（順序）', 'list'],
     ['focusOn', '專注', 'list'],
     ['banish', '放逐', 'list'],
@@ -166,6 +168,48 @@
   };
 
   // ---- 主迴圈 ----
+  // ---- 撿紫光／金光掉落 ----
+  const lootOff = document.createElement('canvas'); const lootCtx = lootOff.getContext('2d', { willReadFrequently: true });
+  let lootRes = null, lootBusy = false, lastLootScan = 0, lootStart = 0, lootIgnore = 0, lootUntil = 0;
+  const scanLoot = () => {
+    if (lootBusy) return; lootBusy = true;
+    requestAnimationFrame(() => {
+      lootBusy = false; lastLootScan = Date.now();
+      const cv = document.querySelector('canvas.world3d') || document.querySelector('canvas'); if (!cv) { lootRes = null; return; }
+      const r = cv.getBoundingClientRect(), SC = 3, w = Math.max(1, Math.round(r.width / SC)), h = Math.max(1, Math.round(r.height / SC));
+      lootOff.width = w; lootOff.height = h;
+      try { lootCtx.drawImage(cv, 0, 0, w, h); } catch (e) { lootRes = null; return; }
+      const d = lootCtx.getImageData(0, 0, w, h).data, cells = new Map();
+      const wantP = (CFG.loot || []).includes('紫'), wantG = (CFG.loot || []).includes('金');
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4, R = d[i], G = d[i + 1], B = d[i + 2];
+        const isP = wantP && R >= 115 && R - G >= 30 && B - G >= 25 && Math.abs(R - B) <= 28;
+        const isG = wantG && R >= 200 && G >= 160 && B <= 110 && R - G <= 60 && R - B >= 110;
+        if (!isP && !isG) continue;
+        const key = ((x / 2) | 0) + ',' + ((y / 2) | 0);
+        const c = cells.get(key) || { n: 0, x: 0, y: 0, x0: x, x1: x, y0: y, y1: y, g: 0 };
+        c.n++; c.x += x; c.y += y; if (isG) c.g++; if (x < c.x0) c.x0 = x; if (x > c.x1) c.x1 = x; if (y < c.y0) c.y0 = y; if (y > c.y1) c.y1 = y; cells.set(key, c);
+      }
+      const seen = new Set(), cx = w / 2, cy = h / 2; let best = null, bd = 1e9;
+      for (const [key] of cells) {
+        if (seen.has(key)) continue; seen.add(key);
+        const b = { n: 0, x: 0, y: 0, x0: 1e9, x1: -1, y0: 1e9, y1: -1, g: 0 }, st = [key];
+        while (st.length) {
+          const kk = st.pop(), c = cells.get(kk);
+          b.n += c.n; b.x += c.x; b.y += c.y; b.g += c.g; b.x0 = Math.min(b.x0, c.x0); b.x1 = Math.max(b.x1, c.x1); b.y0 = Math.min(b.y0, c.y0); b.y1 = Math.max(b.y1, c.y1);
+          const [gx, gy] = kk.split(',').map(Number);
+          for (let ax = -1; ax <= 1; ax++) for (let ay = -1; ay <= 1; ay++) { const nk = (gx + ax) + ',' + (gy + ay); if (!seen.has(nk) && cells.has(nk)) { seen.add(nk); st.push(nk); } }
+        }
+        if (b.n < 15) continue;
+        const bw = b.x1 - b.x0 + 1, bh = b.y1 - b.y0 + 1;
+        if (bh < bw * 1.2) continue;   // 光柱是直的，數字、圖示不算
+        const x = b.x / b.n, y = b.y1 - 2, dx = (x - cx) * SC, dy = (y - cy) * SC, dd = Math.hypot(dx, dy);
+        const sc = dd - (b.g > b.n / 2 ? 300 : 0);   // 金光優先
+        if (sc < bd) { bd = sc; best = { dx, dy, dd, gold: b.g > b.n / 2, sx: r.x + x * SC, sy: r.y + y * SC }; }
+      }
+      lootRes = best;
+    });
+  };
   let lastSpeed = 0, lastPick = 0, pickTries = 0; const chOff = document.createElement('canvas'); const chCtx = chOff.getContext('2d', { willReadFrequently: true }); let chestRes = null, chestScanBusy = false, lastChestScan = 0, chestUntil = 0, chestIgnore = 0, chestStart = 0; const chestMark = (c) => { if (!CFG.chestShow) return; let m = document.getElementById('ro-chest'); if (!m) { m = document.createElement('div'); m.id = 'ro-chest'; m.style.cssText = 'position:fixed;width:40px;height:40px;border:3px solid red;border-radius:6px;pointer-events:none;z-index:2147483646'; document.body.appendChild(m); } m.style.left = (c.sx - 20) + 'px'; m.style.top = (c.sy - 20) + 'px'; m.style.display = 'block'; clearTimeout(m._t); m._t = setTimeout(() => { m.style.display = 'none'; }, 500); }; const scanChest = () => { if (chestScanBusy) return; chestScanBusy = true; requestAnimationFrame(() => { chestScanBusy = false; lastChestScan = Date.now(); const cv = document.querySelector('canvas.world3d') || document.querySelector('canvas'); if (!cv) { chestRes = null; return; } const r = cv.getBoundingClientRect(), SC = 3; const w = Math.max(1, Math.round(r.width / SC)), h = Math.max(1, Math.round(r.height / SC)); chOff.width = w; chOff.height = h; try { chCtx.drawImage(cv, 0, 0, w, h); } catch (e) { chestRes = null; return; } const d = chCtx.getImageData(0, 0, w, h).data; let chLit = 0; const gl = new Uint8Array(w * h); const cells = new Map(); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y * w + x) * 4, R = d[i], G = d[i + 1], B = d[i + 2]; if (R + G + B > 30) chLit++; if (R >= 150 && G >= 135 && Math.abs(R - G) <= 30 && R - B >= 60) gl[y * w + x] = 1; const dayC = R > 90 && R < 235 && R - G >= 30 && G >= B - 5 && R - B >= 45 && R >= G * 1.3 && R <= G * 2.3; const nightC = R >= 55 && R <= 135 && R - G >= 10 && R - G <= 35 && B - G >= -3 && B - G <= 14 && R - B >= 3; if (!dayC && !nightC) continue; const key = ((x / 3) | 0) + ',' + ((y / 3) | 0); const c = cells.get(key) || { n: 0, x: 0, y: 0, my: 0 }; c.n++; c.x += x; c.y += y; if (y > c.my) c.my = y; cells.set(key, c); } if (chLit < w * h * 0.1) { if (!window.__roBlankWarn) { window.__roBlankWarn = 1; log('讀不到遊戲畫面，箱子功能無效'); } chestRes = null; return; } const seen = new Set(); let best = null, bd = 1e9; const cx = w / 2, cy = h / 2; for (const [key] of cells) { if (seen.has(key)) continue; seen.add(key); const b = { n: 0, x: 0, y: 0, my: 0 }, st = [key]; while (st.length) { const kk = st.pop(), cc = cells.get(kk); b.n += cc.n; b.x += cc.x; b.y += cc.y; if (cc.my > b.my) b.my = cc.my; const [gx, gy] = kk.split(',').map(Number); for (let ax = -1; ax <= 1; ax++) for (let ay = -1; ay <= 1; ay++) { const nk = (gx + ax) + ',' + (gy + ay); if (!seen.has(nk) && cells.has(nk)) { seen.add(nk); st.push(nk); } } } if (b.n < 12 || b.n > 400) continue; const x = b.x / b.n, y = b.y / b.n; const dx = (x - cx) * SC, dy = (y - cy) * SC, dd = Math.hypot(dx, dy); if (dd < 55) continue; let g = 0; for (let gy = b.my - 3; gy <= b.my + 5; gy++) for (let gx = (x | 0) - 6; gx <= (x | 0) + 6; gx++) if (gx >= 0 && gy >= 0 && gx < w && gy < h && gl[gy * w + gx]) g++; const sc = dd - (g >= 5 ? 250 : 0); if (sc < bd) { bd = sc; best = { dx, dy, n: b.n, g, sx: r.x + x * SC, sy: r.y + y * SC }; } } chestRes = best; }); };  let state = '', circleI = 0, lastCircle = 0, lastAct = 0, walkStart = 0, randUntil = 0;
   const setState = (s) => { if (s !== state) { state = s; log('狀態：' + s); } };
   let paused = false;
@@ -221,7 +265,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 12 : 24) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(760px,90vw)') + ';max-height:88vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-21d'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-21e'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -354,7 +398,20 @@
     }
     walkStart = 0;
     if (findText('擺攤')) { setState('城鎮：找不到遠征隊長'); release(); return; }
-    setState('地圖中：繞圈'); if (CFG.pickup && now - lastPick > 1200 && pickTries < 10) { const pb = [...document.querySelectorAll('button, div, span')].filter(e => vis(e) && /^撿取\s*[：:]/.test(e.textContent.trim()) && e.textContent.trim().length <= 12).sort((a, b) => area(a) - area(b))[0]; if (pb && !pb.textContent.includes(CFG.pickup)) { lastPick = now; pickTries++; log('撿取切換 → ' + CFG.pickup); (pb.closest('button') || pb).click(); } else if (pb) pickTries = 0; } if (CFG.speed && now - lastSpeed > 2000) { const sp = allExact('1x')[0]; if (sp) { lastSpeed = now; log('切換速度 1x → 2x'); sp.click(); } } if (CFG.chest) { if (findText('才能開啟寶箱', false) && !(chestIgnore > now + 15000)) { chestIgnore = now + 20000; chestUntil = 0; chestStart = 0; log('Zeny 不夠開箱，20 秒內不找箱子'); } if (now - lastChestScan > 300) scanChest(); if (now < chestUntil) { setState('箱子旁停留'); if (now > chestUntil - CFG.chestStopMs + 450) release(); return; } const c = chestRes; if (c && now > chestIgnore) { const dist = Math.hypot(c.dx, c.dy); if (!chestStart) chestStart = now; chestMark(c); if (dist < CFG.chestNear) { chestUntil = now + CFG.chestStopMs; chestIgnore = chestUntil + 6000; chestStart = 0; chestRes = null; log('到箱子了，停 ' + (CFG.chestStopMs / 1000) + ' 秒'); return; } if (now - chestStart > 8000) { chestIgnore = now + 6000; chestStart = 0; log('追箱子太久，先放棄'); } else { setState('跑向箱子'); const k = []; if (c.dy < -15) k.push('ArrowUp'); if (c.dy > 15) k.push('ArrowDown'); if (c.dx < -15) k.push('ArrowLeft'); if (c.dx > 15) k.push('ArrowRight'); hold(k); return; } } else chestStart = 0; }
+    setState('地圖中：繞圈'); if (CFG.pickup && now - lastPick > 1200 && pickTries < 10) { const pb = [...document.querySelectorAll('button, div, span')].filter(e => vis(e) && /^撿取\s*[：:]/.test(e.textContent.trim()) && e.textContent.trim().length <= 12).sort((a, b) => area(a) - area(b))[0]; if (pb && !pb.textContent.includes(CFG.pickup)) { lastPick = now; pickTries++; log('撿取切換 → ' + CFG.pickup); (pb.closest('button') || pb).click(); } else if (pb) pickTries = 0; } if (CFG.speed && now - lastSpeed > 2000) { const sp = allExact('1x')[0]; if (sp) { lastSpeed = now; log('切換速度 1x → 2x'); sp.click(); } }
+    if ((CFG.loot || []).length) {
+      if (now - lastLootScan > 300) scanLoot();
+      if (now < lootUntil) { setState('撿掉落'); return; }
+      const lt = lootRes;
+      if (lt && now > lootIgnore) {
+        if (!lootStart) { lootStart = now; log('看到' + (lt.gold ? '金光' : '紫光') + '，過去撿'); }
+        if (typeof chestMark === 'function') chestMark(lt);
+        if (lt.dd < 30) { lootUntil = now + 700; lootIgnore = lootUntil + 1500; lootStart = 0; lootRes = null; release(); return; }
+        if (now - lootStart > 7000) { lootIgnore = now + 5000; lootStart = 0; log('撿不到，先放棄'); }
+        else { setState('跑去撿掉落'); const k = []; if (lt.dy < -12) k.push('ArrowUp'); if (lt.dy > 12) k.push('ArrowDown'); if (lt.dx < -12) k.push('ArrowLeft'); if (lt.dx > 12) k.push('ArrowRight'); hold(k); return; }
+      } else lootStart = 0;
+    }
+    if (CFG.chest) { if (findText('才能開啟寶箱', false) && !(chestIgnore > now + 15000)) { chestIgnore = now + 20000; chestUntil = 0; chestStart = 0; log('Zeny 不夠開箱，20 秒內不找箱子'); } if (now - lastChestScan > 300) scanChest(); if (now < chestUntil) { setState('箱子旁停留'); if (now > chestUntil - CFG.chestStopMs + 450) release(); return; } const c = chestRes; if (c && now > chestIgnore) { const dist = Math.hypot(c.dx, c.dy); if (!chestStart) chestStart = now; chestMark(c); if (dist < CFG.chestNear) { chestUntil = now + CFG.chestStopMs; chestIgnore = chestUntil + 6000; chestStart = 0; chestRes = null; log('到箱子了，停 ' + (CFG.chestStopMs / 1000) + ' 秒'); return; } if (now - chestStart > 8000) { chestIgnore = now + 6000; chestStart = 0; log('追箱子太久，先放棄'); } else { setState('跑向箱子'); const k = []; if (c.dy < -15) k.push('ArrowUp'); if (c.dy > 15) k.push('ArrowDown'); if (c.dx < -15) k.push('ArrowLeft'); if (c.dx > 15) k.push('ArrowRight'); hold(k); return; } } else chestStart = 0; }
     if (now - lastCircle >= CFG.stepMs) {
       lastCircle = now;
       const U = 'ArrowUp', R = 'ArrowRight', D = 'ArrowDown', L = 'ArrowLeft';
@@ -364,6 +421,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-21d 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-21e 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
