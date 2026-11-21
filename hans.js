@@ -5,6 +5,7 @@
   const CFG = {
     map: '柏伊亞嵐島',
     lobby: '米德加德',   // 出現「選擇大廳」時要點的大廳
+    pickup: '史詩以上',   // 戰鬥中「撿取：」要切到這個（空白＝不動）
     must: ['雙手劍', '狂擊', '霸體', '怒爆', '劍刃之舞'],
     banish: ['挑釁', '恐嚇吶喊', '快速恢復', '快速回復'],   // 出現時各點一次「放逐」
     focusOn: ['雙手劍', '採集'],    // 每局第一次出現這張卡時，先點它下面的「專注」按鈕
@@ -28,6 +29,7 @@
   const CFG_FIELDS = [
     ['map', '地圖', 'text'],
     ['lobby', '大廳（出現「選擇大廳」時點這個）', 'text'],
+    ['pickup', '撿取（例：全部、史詩以上；空白＝不動）', 'text'],
     ['must', '技能優先（順序）', 'list'],
     ['focusOn', '專注', 'list'],
     ['banish', '放逐', 'list'],
@@ -168,7 +170,7 @@
   };
 
   // ---- 主迴圈 ----
-  let lastSpeed = 0; let state = '', circleI = 0, lastCircle = 0, lastAct = 0, walkStart = 0, randUntil = 0;
+  let lastSpeed = 0, lastPick = 0, pickTries = 0; let state = '', circleI = 0, lastCircle = 0, lastAct = 0, walkStart = 0, randUntil = 0;
   const setState = (s) => { if (s !== state) { state = s; log('狀態：' + s); } };
   let paused = false;
   window.roToggle = () => {
@@ -223,7 +225,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 12 : 24) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(760px,90vw)') + ';max-height:88vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-21c'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-21d'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -325,7 +327,7 @@
     }
 
     const back = findText('返回角色') || findText('回到角色');
-    if (back) { release(); setState('結算'); if (now - lastAct > 1500) { lastAct = now; log('點 返回角色'); swapDone = false; banished.clear(); focused.clear(); back.click(); } return; }
+    if (back) { release(); setState('結算'); if (now - lastAct > 1500) { lastAct = now; pickTries = 0; log('點 回到角色'); swapDone = false; banished.clear(); focused.clear(); back.click(); } return; }
     const enter = [...document.querySelectorAll('button, a, div, span')].find(b => vis(b) && /^[✔✓\s]*入場$/.test(b.textContent.trim()));
     if (enter) { release(); setState('高難度提醒'); if (now - lastAct > 1500) { lastAct = now; log('點 入場'); enter.click(); } return; }
     const field = findText('前往野外');
@@ -378,7 +380,7 @@
     }
     walkStart = 0;
     if (findText('擺攤')) { setState('城鎮：找不到遠征隊長'); release(); return; }
-    if (CFG.speed && now - lastSpeed > 2000) {
+    if (CFG.pickup && now - lastPick > 1200 && pickTries < 10) { const pb = [...document.querySelectorAll('button, div, span')].filter(e => vis(e) && /^撿取\s*[：:]/.test(e.textContent.trim()) && e.textContent.trim().length <= 12).sort((a, b) => area(a) - area(b))[0]; if (pb && !pb.textContent.includes(CFG.pickup)) { lastPick = now; pickTries++; log('撿取切換 → ' + CFG.pickup); (pb.closest('button') || pb).click(); } else if (pb) pickTries = 0; } if (CFG.speed && now - lastSpeed > 2000) {
       const sp = allExact('1x')[0];
       if (sp) { lastSpeed = now; log('切換速度 1x → 2x'); sp.click(); }
     }
@@ -394,6 +396,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-21c 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-21d 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
