@@ -4,6 +4,7 @@
   window.stopAll?.(); window.stopAutoPick?.(); window.stopCircle?.();
   const CFG = {
     map: '柏伊亞嵐島',
+    lobby: '米德加德',   // 出現「選擇大廳」時要點的大廳
     must: ['雙手劍', '狂擊', '霸體', '怒爆', '劍刃之舞'],
     banish: ['挑釁', '恐嚇吶喊', '快速恢復', '快速回復'],   // 出現時各點一次「放逐」
     focusOn: ['雙手劍', '採集'],    // 每局第一次出現這張卡時，先點它下面的「專注」按鈕
@@ -26,6 +27,7 @@
   const CFG_KEY = 'roCfg_' + location.host;
   const CFG_FIELDS = [
     ['map', '地圖', 'text'],
+    ['lobby', '大廳（出現「選擇大廳」時點這個）', 'text'],
     ['must', '技能優先（順序）', 'list'],
     ['focusOn', '專注', 'list'],
     ['banish', '放逐', 'list'],
@@ -221,7 +223,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 12 : 24) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(760px,90vw)') + ';max-height:88vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-20f'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-21a'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -327,6 +329,18 @@
     if (enter) { release(); setState('高難度提醒'); if (now - lastAct > 1500) { lastAct = now; log('點 入場'); enter.click(); } return; }
     const field = findText('前往野外');
     if (field) { release(); setState('難度視窗'); if (now - lastAct > 1500) { lastAct = now; log('點 前往野外'); field.click(); } return; }
+    // 「選擇大廳」視窗 → 點設定裡的大廳
+    if (findText('選擇大廳')) {
+      release(); setState('選擇大廳');
+      if (now - lastAct > 2000) {
+        lastAct = now;
+        const want = CFG.lobby;
+        const el = want && [...document.querySelectorAll('button, li, a, div, span')].filter(e => vis(e) && e.textContent.includes(want) && e.textContent.trim().length <= 30).sort((a, b) => area(a) - area(b))[0];
+        if (el) { log('選大廳 ' + want); (el.closest('button, li, a, [role=button]') || el).click(); }
+        else log('找不到大廳 ' + want + '，請在 ⚙ 設定填「大廳」');
+      }
+      return;
+    }
     const go = findText('出發');
     if (go) {
       release(); setState('遠征視窗');
@@ -373,6 +387,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-20f 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-21a 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
