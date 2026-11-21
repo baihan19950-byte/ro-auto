@@ -42,7 +42,7 @@
   try { const sv = JSON.parse(localStorage.getItem(CFG_KEY) || '{}'); for (const [k] of CFG_FIELDS) if (k in sv) CFG[k] = sv[k]; } catch (e) {}
   const SMALL = /iPhone|iPad|Android/i.test(navigator.userAgent) || Math.min(innerWidth, innerHeight) < 600;
   const badge = (() => { let b = document.getElementById('ro-badge'); if (!b) { b = document.createElement('div'); b.id = 'ro-badge'; b.style.cssText = SMALL ? 'position:fixed;left:6px;bottom:6px;z-index:2147483647;background:rgba(0,0,0,.7);color:#fff;font:bold 12px sans-serif;padding:6px 10px;border-radius:8px;border:1px solid #fff;max-width:60vw;cursor:pointer;user-select:none' : 'position:fixed;left:10px;bottom:10px;z-index:2147483647;background:rgba(0,0,0,.8);color:#fff;font:bold 22px sans-serif;padding:16px 24px;border-radius:14px;border:3px solid #fff;max-width:80vw;min-width:260px;cursor:pointer;user-select:none'; document.body.appendChild(b); } b.onclick = () => window.roToggle?.(); return b; })();
-  const log = (...a) => { if (CFG.log) console.log('[RO]', ...a); badge.textContent = 'RO自動：' + a.join(' ').slice(0, 40) + '（點我暫停）'; };
+  const roHist = window.__roHist = window.__roHist || []; const log = (...a) => { if (CFG.log) console.log('[RO]', ...a); const d = new Date(); const msg = a.join(' ').slice(0, 60); if (!msg.startsWith('狀態：') || roHist[roHist.length - 1]?.slice(9) !== msg) { roHist.push(String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0') + ' ' + msg); if (roHist.length > 40) roHist.shift(); } badge.textContent = 'RO自動：' + a.join(' ').slice(0, 40) + '（點我暫停）'; };
   const vis = (e) => e && e.offsetParent !== null;
   const findText = (txt, exact = true) => {
     const els = [...document.querySelectorAll('button, a, div, span, p, b, strong, label')]
@@ -223,7 +223,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 12 : 24) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(760px,90vw)') + ';max-height:88vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-21b'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-21c'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -236,6 +236,7 @@
         inputs[k] = [inp, type];
         p.appendChild(row);
       }
+      const hist = document.createElement('div'); hist.style.cssText = 'margin:10px 0;padding:8px;background:#f3f3f3;border-radius:8px;font:' + (SMALL ? 11 : 15) + 'px monospace;max-height:30vh;overflow:auto;white-space:pre-wrap'; hist.textContent = '最近紀錄：\n' + (roHist.slice(-25).reverse().join('\n') || '（還沒有）'); p.appendChild(hist);
       const tip = document.createElement('div'); tip.textContent = '清單用逗號隔開，前面的優先。'; tip.style.cssText = 'color:#666;font-size:.8em;margin:6px 0 10px';
       p.appendChild(tip);
       const close = () => { p.remove(); paused = wasPaused; if (!paused) { state = ''; log('繼續執行'); } else badge.textContent = 'RO自動：已暫停（點我繼續）'; };
@@ -393,6 +394,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-21b 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-21c 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
