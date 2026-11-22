@@ -295,7 +295,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 12 : 24) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(760px,90vw)') + ';max-height:88vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23a'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23b'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -310,7 +310,8 @@
         // 可點選的小按鈕：點一下加入／拿掉，不用打字
         const opts = { must: SEEN_KEY, focusOn: SEEN_KEY, banish: SEEN_KEY, avoid: SEEN_KEY, chestMust: SEEN_KEY, map: MAPS_KEY }[k];
         const fixed = { lobby: ['阿斯嘉特', '米德加德', '亞爾夫海姆界', '華納海姆', '約頓海姆'], pickup: ['全部', '史詩以上'], loot: ['紫', '金'] }[k];
-        const names = fixed || (opts ? [...new Set([...(Array.isArray(CFG[k]) ? CFG[k] : [CFG[k]]).filter(Boolean), ...loadArr(opts)])] : null);
+        const KNOWN_MAPS = ['普隆德拉原野', '普隆德拉地下水道', '失事輪', '柏伊亞嵐島', '斐揚森林', '夢羅克金字塔', '迷宮森林'];
+        const names = fixed || (opts ? [...new Set([...(k === 'map' ? KNOWN_MAPS : []), ...(Array.isArray(CFG[k]) ? CFG[k] : [CFG[k]]).filter(Boolean), ...loadArr(opts)])] : null);
         if (names && type !== 'bool') {
           const box = document.createElement('div'); box.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:6px';
           const cur = () => type === 'list' ? inp.value.split(/[,，、\s]+/).filter(Boolean) : [inp.value.trim()];
@@ -518,6 +519,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-23a 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-23b 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
