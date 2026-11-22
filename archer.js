@@ -266,7 +266,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 12 : 24) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(760px,90vw)') + ';max-height:88vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-21g'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-22a'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -304,6 +304,13 @@
     const now = Date.now();
     if (cards().length) { release(); setState('選卡'); doPick(); return; }
     // 斷線重登後的「未完成的一局」→ 點 繼續
+    // 打完最後一關跳「未完待續」→ 點接受
+    if (findText('未完待續', false) || findText('冒險的終點', false)) {
+      release(); setState('未完待續');
+      const ok = allExact('接受').sort((a, b) => area(b) - area(a))[0];
+      if (ok && now - lastAct > 1500) { lastAct = now; log('點 接受（未完待續）'); ok.click(); }
+      return;
+    }
     if (findText('未完成的一局', false) || findText('尚未結束的一局', false) || findText('離開了一局', false)) {
       release(); setState('未完成的一局');
       const cont = allExact('繼續').sort((a, b) => area(b) - area(a))[0];
@@ -423,6 +430,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-21g 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-22a 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
