@@ -136,11 +136,36 @@
     if (!best) return null;
     return best.closest('button') || best;
   };
+  // ---- 記下看過的卡片名稱、地圖名稱（給 ⚙ 設定用按鈕點選）----
+  const SEEN_KEY = 'roSeen_' + location.host + '_' + CFG.charName, MAPS_KEY = 'roMaps_' + location.host;
+  const loadArr = (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { return []; } };
+  const addSeen = (k, names) => { const a = loadArr(k); let ch = false; for (const n of names) if (n && !a.includes(n)) { a.push(n); ch = true; } if (ch) { while (a.length > 80) a.shift(); try { localStorage.setItem(k, JSON.stringify(a)); } catch (e) {} } };
+  const SKIP_WORDS = /^(普通|優良|精良|稀有|史詩|傳說|神話|技能|最新|新|專注|放逐|Lv|LV|\d)/;
+  const cardName = (c) => {
+    for (let l of c.innerText.split('\n').map(s => s.trim()).filter(Boolean)) {
+      if (SKIP_WORDS.test(l) || /[+％%→]/.test(l) || l.length > 12) continue;
+      if (/[：:]/.test(l)) l = l.split(/[：:]/).pop().trim();
+      if (/^[一-鿿]{2,8}$/.test(l)) return l;
+    }
+    return '';
+  };
+  const recordMaps = () => {
+    const names = [];
+    for (const e of document.querySelectorAll('div, span, p')) {
+      const t = e.textContent.trim();
+      if (!/^MVP\s/.test(t) || t.length > 20 || !vis(e)) continue;
+      const lines = (e.parentElement?.innerText || '').split('\n').map(s => s.trim()).filter(Boolean);
+      const i = lines.findIndex(l => /^MVP\s/.test(l));
+      if (i > 0 && /^[一-鿿]{2,10}$/.test(lines[i - 1])) names.push(lines[i - 1]);
+    }
+    addSeen(MAPS_KEY, names);
+  };
   const doPick = () => {
     if (pickBusy) return;
     pickBusy = true;
     setTimeout(() => {
       const live = cards();
+      addSeen(SEEN_KEY, live.map(cardName));
       if (live.length) {
         let ranked = live.map(c => ({ c, ...score(c) })).sort((a, b) => b.s - a.s); const ok = ranked.filter(r => !CFG.avoid.some(k => r.t.includes(k))); if (ok.length) ranked = ok;
         let pick = null, why = '分數最高';
@@ -270,7 +295,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 12 : 24) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(760px,90vw)') + ';max-height:88vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-22b'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23a'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -281,6 +306,25 @@
         if (type === 'bool') { inp.type = 'checkbox'; inp.checked = !!CFG[k]; inp.style.cssText = 'width:' + fs + 'px;height:' + fs + 'px;vertical-align:middle;margin-right:8px'; row.appendChild(inp); t.style.display = 'inline'; row.appendChild(t); }
         else { inp.type = type === 'num' ? 'number' : 'text'; inp.value = type === 'list' ? (CFG[k] || []).join('，') : CFG[k]; inp.style.cssText = 'width:100%;box-sizing:border-box;font-size:' + fs + 'px;padding:6px;border:1px solid #888;border-radius:6px'; row.appendChild(t); row.appendChild(inp); }
         inputs[k] = [inp, type];
+
+        // 可點選的小按鈕：點一下加入／拿掉，不用打字
+        const opts = { must: SEEN_KEY, focusOn: SEEN_KEY, banish: SEEN_KEY, avoid: SEEN_KEY, chestMust: SEEN_KEY, map: MAPS_KEY }[k];
+        const fixed = { lobby: ['阿斯嘉特', '米德加德', '亞爾夫海姆界', '華納海姆', '約頓海姆'], pickup: ['全部', '史詩以上'], loot: ['紫', '金'] }[k];
+        const names = fixed || (opts ? [...new Set([...(Array.isArray(CFG[k]) ? CFG[k] : [CFG[k]]).filter(Boolean), ...loadArr(opts)])] : null);
+        if (names && type !== 'bool') {
+          const box = document.createElement('div'); box.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:6px';
+          const cur = () => type === 'list' ? inp.value.split(/[,，、\s]+/).filter(Boolean) : [inp.value.trim()];
+          const paint = () => { for (const b of box.children) { const on = b.dataset.n && cur().includes(b.dataset.n); b.style.background = on ? '#2a7' : '#e8e8e8'; b.style.color = on ? '#fff' : '#333'; } };
+          for (const n of names) {
+            const b = document.createElement('button'); b.textContent = n; b.dataset.n = n;
+            b.style.cssText = 'font:' + Math.round(fs * 0.8) + 'px sans-serif;padding:4px 10px;border:0;border-radius:14px;cursor:pointer';
+            b.onclick = (ev) => { ev.preventDefault(); if (type === 'list') { const a = cur(); const i = a.indexOf(n); if (i >= 0) a.splice(i, 1); else a.push(n); inp.value = a.join('，'); } else inp.value = n; paint(); };
+            box.appendChild(b);
+          }
+          if (type === 'list') { const c = document.createElement('button'); c.textContent = '清空'; c.style.cssText = 'font:' + Math.round(fs * 0.8) + 'px sans-serif;padding:4px 10px;border:1px solid #c44;color:#c44;background:#fff;border-radius:14px;cursor:pointer'; c.onclick = (ev) => { ev.preventDefault(); inp.value = ''; paint(); }; box.appendChild(c); }
+          if (!names.length) { const t2 = document.createElement('span'); t2.textContent = opts === MAPS_KEY ? '（打開遠征視窗後就會出現地圖按鈕）' : '（選過幾次卡後就會出現卡片按鈕）'; t2.style.cssText = 'color:#888;font-size:.8em'; box.prepend(t2); }
+          inp.addEventListener('input', paint); paint(); row.appendChild(box);
+        }
         p.appendChild(row);
       }
       const hist = document.createElement('div'); hist.style.cssText = 'margin:10px 0;padding:8px;background:#f3f3f3;border-radius:8px;font:' + (SMALL ? 11 : 15) + 'px monospace;max-height:30vh;overflow:auto;white-space:pre-wrap'; hist.textContent = '最近紀錄：\n' + (roHist.slice(-25).reverse().join('\n') || '（還沒有）'); p.appendChild(hist);
@@ -408,6 +452,7 @@
       }
       return;
     }
+    if (findText('你的裝備評分', false) && now - (window.__roMapRec || 0) > 3000) { window.__roMapRec = now; recordMaps(); }
     // 遠征視窗開著但沒有「出發」（例如右邊停在劇情）→ 先點地圖
     if (findText('你的裝備評分', false) && !findText('出發') && !findText('選擇大廳')) {
       release(); setState('遠征視窗：選地圖');
@@ -473,6 +518,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-22b 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-23a 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
