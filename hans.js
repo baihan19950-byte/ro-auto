@@ -291,20 +291,20 @@
       const wasPaused = paused; paused = true; release();
       p = document.createElement('div');
       p.id = 'ro-cfgpanel';
-      const fs = SMALL ? 15 : 22;
-      p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 12 : 24) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(760px,90vw)') + ';max-height:88vh;overflow:auto;box-sizing:border-box';
+      const fs = SMALL ? 14 : 16;
+      p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 10 : 14) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(520px,70vw)') + ';max-height:78vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23b'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23c'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
         const row = document.createElement('label');
-        row.style.cssText = 'display:block;margin:8px 0';
+        row.style.cssText = 'display:block;margin:5px 0';
         const t = document.createElement('div'); t.textContent = label; t.style.cssText = 'font-weight:bold;margin-bottom:3px';
         const inp = document.createElement('input');
         if (type === 'bool') { inp.type = 'checkbox'; inp.checked = !!CFG[k]; inp.style.cssText = 'width:' + fs + 'px;height:' + fs + 'px;vertical-align:middle;margin-right:8px'; row.appendChild(inp); t.style.display = 'inline'; row.appendChild(t); }
-        else { inp.type = type === 'num' ? 'number' : 'text'; inp.value = type === 'list' ? (CFG[k] || []).join('，') : CFG[k]; inp.style.cssText = 'width:100%;box-sizing:border-box;font-size:' + fs + 'px;padding:6px;border:1px solid #888;border-radius:6px'; row.appendChild(t); row.appendChild(inp); }
+        else { inp.type = type === 'num' ? 'number' : 'text'; inp.value = type === 'list' ? (CFG[k] || []).join('，') : CFG[k]; inp.style.cssText = 'width:100%;box-sizing:border-box;font-size:' + fs + 'px;padding:3px 6px;border:1px solid #888;border-radius:6px'; row.appendChild(t); row.appendChild(inp); }
         inputs[k] = [inp, type];
 
         // 可點選的小按鈕：點一下加入／拿掉，不用打字
@@ -318,7 +318,7 @@
           const paint = () => { for (const b of box.children) { const on = b.dataset.n && cur().includes(b.dataset.n); b.style.background = on ? '#2a7' : '#e8e8e8'; b.style.color = on ? '#fff' : '#333'; } };
           for (const n of names) {
             const b = document.createElement('button'); b.textContent = n; b.dataset.n = n;
-            b.style.cssText = 'font:' + Math.round(fs * 0.8) + 'px sans-serif;padding:4px 10px;border:0;border-radius:14px;cursor:pointer';
+            b.style.cssText = 'font:' + Math.round(fs * 0.8) + 'px sans-serif;padding:2px 8px;border:0;border-radius:12px;cursor:pointer';
             b.onclick = (ev) => { ev.preventDefault(); if (type === 'list') { const a = cur(); const i = a.indexOf(n); if (i >= 0) a.splice(i, 1); else a.push(n); inp.value = a.join('，'); } else inp.value = n; paint(); };
             box.appendChild(b);
           }
@@ -328,11 +328,11 @@
         }
         p.appendChild(row);
       }
-      const hist = document.createElement('div'); hist.style.cssText = 'margin:10px 0;padding:8px;background:#f3f3f3;border-radius:8px;font:' + (SMALL ? 11 : 15) + 'px monospace;max-height:30vh;overflow:auto;white-space:pre-wrap'; hist.textContent = '最近紀錄：\n' + (roHist.slice(-25).reverse().join('\n') || '（還沒有）'); p.appendChild(hist);
+      const hist = document.createElement('div'); hist.style.cssText = 'margin:10px 0;padding:8px;background:#f3f3f3;border-radius:8px;font:' + (SMALL ? 11 : 12) + 'px monospace;max-height:30vh;overflow:auto;white-space:pre-wrap'; hist.textContent = '最近紀錄：\n' + (roHist.slice(-25).reverse().join('\n') || '（還沒有）'); p.appendChild(hist);
       const tip = document.createElement('div'); tip.textContent = '清單用逗號隔開，前面的優先。'; tip.style.cssText = 'color:#666;font-size:.8em;margin:6px 0 10px';
       p.appendChild(tip);
       const close = () => { p.remove(); paused = wasPaused; if (!paused) { state = ''; log('繼續執行'); } else badge.textContent = 'RO自動：已暫停（點我繼續）'; };
-      const btn = (txt, bg, fn) => { const b = document.createElement('button'); b.textContent = txt; b.style.cssText = 'font:bold ' + fs + 'px sans-serif;padding:8px 16px;margin:4px 8px 0 0;border:0;border-radius:8px;color:#fff;background:' + bg + ';cursor:pointer'; b.onclick = fn; p.appendChild(b); };
+      const btn = (txt, bg, fn) => { const b = document.createElement('button'); b.textContent = txt; b.style.cssText = 'font:bold ' + fs + 'px sans-serif;padding:6px 14px;margin:4px 8px 0 0;border:0;border-radius:8px;color:#fff;background:' + bg + ';cursor:pointer'; b.onclick = fn; p.appendChild(b); };
       btn('儲存', '#2a7', () => {
         const out = {};
         for (const k in inputs) {
@@ -519,6 +519,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-23b 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-23c 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
