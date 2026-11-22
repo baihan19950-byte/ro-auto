@@ -93,7 +93,7 @@
   };
 
   // ---- 按鍵 ----
-  const KC = { ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, ArrowLeft: 37, ' ': 32, Escape: 27 };
+  const KC = { ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, ArrowLeft: 37, ' ': 32, Escape: 27, Enter: 13 };
   const mk = (type, k) => {
     const e = new KeyboardEvent(type, { key: k, code: k === ' ' ? 'Space' : k, bubbles: false, cancelable: true });
     Object.defineProperty(e, 'keyCode', { get: () => KC[k] });
@@ -215,7 +215,7 @@
       lootRes = best; window.__roLoot = best;
     });
   };
-  let lastSpeed = 0, lastPick = 0, pickTries = 0; let state = '', circleI = 0, lastCircle = 0, lastAct = 0, walkStart = 0, randUntil = 0;
+  let lastSpeed = 0, lastPick = 0, pickTries = 0, acceptTries = 0; let state = '', circleI = 0, lastCircle = 0, lastAct = 0, walkStart = 0, randUntil = 0;
   const setState = (s) => { if (s !== state) { state = s; log('狀態：' + s); } };
   let paused = false;
   window.roToggle = () => {
@@ -270,7 +270,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 12 : 24) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(760px,90vw)') + ';max-height:88vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-22a'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-22b'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -311,8 +311,20 @@
     // 打完最後一關跳「未完待續」→ 點接受
     if (findText('未完待續', false) || findText('冒險的終點', false)) {
       release(); setState('未完待續');
-      const ok = allExact('接受').sort((a, b) => area(b) - area(a))[0];
-      if (ok && now - lastAct > 1500) { lastAct = now; log('點 接受（未完待續）'); ok.click(); }
+      const ok = [...document.querySelectorAll('button, a, div, span')].filter(e => vis(e) && e.textContent.trim() === '接受').sort((a, b) => area(a) - area(b))[0];
+      if (ok && now - lastAct > 1500) {
+        lastAct = now; acceptTries++;
+        const r = ok.getBoundingClientRect(), x = r.x + r.width / 2, y = r.y + r.height / 2;
+        const top = document.elementFromPoint(x, y) || ok;
+        log('點 接受（未完待續）第 ' + acceptTries + ' 次');
+        const o = { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, pointerId: 1, pointerType: 'mouse', isPrimary: true };
+        for (const t of new Set([top, ok, ok.closest('button')].filter(Boolean))) {
+          t.dispatchEvent(new PointerEvent('pointerover', o)); t.dispatchEvent(new PointerEvent('pointerdown', o)); t.dispatchEvent(new MouseEvent('mousedown', o));
+          t.dispatchEvent(new PointerEvent('pointerup', o)); t.dispatchEvent(new MouseEvent('mouseup', o)); t.click();
+        }
+        if (acceptTries >= 3) { tap('Enter'); tap(' '); }
+        if (acceptTries >= 6) { log('接受沒反應，重新整理'); acceptTries = 0; setTimeout(() => location.reload(), 500); }
+      }
       return;
     }
     if (findText('未完成的一局', false) || findText('尚未結束的一局', false) || findText('離開了一局', false)) {
@@ -461,6 +473,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-22a 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-22b 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
