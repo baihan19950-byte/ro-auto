@@ -193,6 +193,37 @@
     }, 600);
   };
 
+  // ---- 遊戲裡的視窗（背包等）可以捲動時，右邊出現大顆 ▲▼ ----
+  (() => {
+    let nav = document.getElementById('ro-gnav');
+    if (!nav) {
+      nav = document.createElement('div'); nav.id = 'ro-gnav';
+      nav.style.cssText = 'position:fixed;right:' + (SMALL ? 6 : 10) + 'px;top:30%;z-index:2147483646;display:none;flex-direction:column;gap:12px';
+      for (const [t, d] of [['▲', -1], ['▼', 1]]) {
+        const b = document.createElement('button'); b.textContent = t;
+        b.style.cssText = 'width:' + (SMALL ? 48 : 68) + 'px;height:' + (SMALL ? 48 : 68) + 'px;font:bold ' + (SMALL ? 22 : 32) + 'px sans-serif;border:2px solid #fff;border-radius:12px;background:rgba(40,70,120,.85);color:#fff;cursor:pointer';
+        b.onclick = () => { const el = nav._target; if (el) el.scrollBy({ top: d * el.clientHeight * 0.6, behavior: 'smooth' }); };
+        nav.appendChild(b);
+      }
+      document.body.appendChild(nav);
+    }
+    const findScroller = () => {
+      let best = null, ba = 0;
+      for (const el of document.querySelectorAll('div, ul, section, main')) {
+        if (el.scrollHeight - el.clientHeight < 40 || el.clientHeight < 80) continue;
+        if (el.closest('#ro-cfgpanel')) continue;
+        const oy = getComputedStyle(el).overflowY; if (oy !== 'auto' && oy !== 'scroll') continue;
+        const r = el.getBoundingClientRect(); if (r.width < 100 || r.bottom < 0 || r.top > innerHeight) continue;
+        const a = r.width * r.height; if (a > ba) { ba = a; best = el; }
+      }
+      return best;
+    };
+    clearInterval(window.__roGnav);
+    window.__roGnav = setInterval(() => {
+      const t = document.getElementById('ro-cfgpanel') ? null : findScroller();
+      nav._target = t; nav.style.display = t ? 'flex' : 'none';
+    }, 800);
+  })();
   // ---- 主迴圈 ----
   // ---- 撿紫光／金光掉落 ----
   const lootOff = document.createElement('canvas'); const lootCtx = lootOff.getContext('2d', { willReadFrequently: true });
@@ -293,7 +324,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 10 : 14) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(520px,70vw)') + ';max-height:78vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23e'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23f'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -497,6 +528,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-23e 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-23f 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
