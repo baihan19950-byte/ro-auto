@@ -333,7 +333,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 10 : 14) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(520px,70vw)') + ';max-height:78vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23g'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23h'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -547,8 +547,8 @@
       const lt = lootRes;
       if (!lt && lootStart && lootLast && lootLast.dd < 140) { lootUntil = now + 900; lootIgnore = lootUntil + 1500; lootStart = 0; lootLast = null; return; }   // 已經走到旁邊（光柱跟角色重疊），再往前一點撿起來
       if (lt && now > lootIgnore) {
-        lootLast = lt; if (!lootStart) { lootStart = now; log('看到' + (lt.gold ? '金光' : '紫光') + '，過去撿'); }
-        if (typeof chestMark === 'function') chestMark(lt);
+        lootLast = lt; if (!lootStart) { lootStart = now; log('看到' + (lt.gold ? '金光' : '紫光') + '，過去撿（' + Math.round(lt.sx) + ',' + Math.round(lt.sy) + '）'); }
+        { let m = document.getElementById('ro-lootmark'); if (!m) { m = document.createElement('div'); m.id = 'ro-lootmark'; m.style.cssText = 'position:fixed;width:44px;height:44px;border:4px solid ' + (lt.gold ? '#fc0' : '#c0f') + ';border-radius:50%;pointer-events:none;z-index:2147483646'; document.body.appendChild(m); } m.style.borderColor = lt.gold ? '#fc0' : '#c0f'; m.style.left = (lt.sx - 22) + 'px'; m.style.top = (lt.sy - 22) + 'px'; m.style.display = 'block'; clearTimeout(m._t); m._t = setTimeout(() => { m.style.display = 'none'; }, 600); }
         if (lt.dd < 90) { lootUntil = now + 900; lootIgnore = lootUntil + 1500; lootStart = 0; lootRes = null; lootFails = 0; return; }
         if (now - lootStart > 7000) { lootFails++; const wait = Math.min(60000, 5000 * 2 ** (lootFails - 1)); lootIgnore = now + wait; lootStart = 0; log('撿不到，先放棄 ' + Math.round(wait / 1000) + ' 秒'); }
         else { setState('跑去撿掉落'); const k = []; if (lt.dy < -12) k.push('ArrowUp'); if (lt.dy > 12) k.push('ArrowDown'); if (lt.dx < -12) k.push('ArrowLeft'); if (lt.dx > 12) k.push('ArrowRight'); hold(k); return; }
@@ -564,6 +564,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-23g 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-23h 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
