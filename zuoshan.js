@@ -231,7 +231,7 @@
   // ---- 主迴圈 ----
   // ---- 撿紫光／金光掉落 ----
   const lootOff = document.createElement('canvas'); const lootCtx = lootOff.getContext('2d', { willReadFrequently: true });
-  let lootLast = null, lootRes = null, lootBusy = false, lastLootScan = 0, lootStart = 0, lootIgnore = 0, lootUntil = 0;
+  let lootFails = 0, lootLast = null, lootRes = null, lootBusy = false, lastLootScan = 0, lootStart = 0, lootIgnore = 0, lootUntil = 0;
   const scanLoot = () => {
     if (lootBusy) return; lootBusy = true;
     requestAnimationFrame(() => {
@@ -244,7 +244,7 @@
       const wantP = (CFG.loot || []).includes('紫'), wantG = (CFG.loot || []).includes('金');
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4, R = d[i], G = d[i + 1], B = d[i + 2];
-        const isP = wantP && B - G >= 35 && R - G >= 15 && B >= R - 15 && B >= 95 && R >= 60;
+        const isP = wantP && B - G >= 25 && R - G >= 35 && B >= R - 15 && B >= 120 && R >= 130;
         const isG = wantG && R >= 140 && R - G >= 30 && R - G <= 75 && G - B >= 30 && B <= 95;
         if (!isP && !isG) continue;
         const key = ((x / 2) | 0) + ',' + ((y / 2) | 0);
@@ -262,6 +262,11 @@
           for (let ax = -1; ax <= 1; ax++) for (let ay = -1; ay <= 1; ay++) { const nk = (gx + ax) + ',' + (gy + ay); if (!seen.has(nk) && cells.has(nk)) { seen.add(nk); st.push(nk); } }
         }
         if (b.n < 25 || b.n > 500) continue;   // 太小是雜點，太大是技能特效
+        if (b.g > b.n / 2) {   // 金光：周圍有很多橘紅色爆擊星星 → 是傷害數字，不是掉落
+          let burst = 0, tot = 0; const mx = Math.ceil((b.x1 - b.x0) * 0.4) + 2;
+          for (let yy = Math.max(0, b.y0 - mx); yy <= Math.min(h - 1, b.y1 + mx); yy++) for (let xx = Math.max(0, b.x0 - mx); xx <= Math.min(w - 1, b.x1 + mx); xx++) { const j = (yy * w + xx) * 4, R2 = d[j], G2 = d[j + 1], B2 = d[j + 2]; tot++; if (R2 >= 170 && R2 - G2 >= 90 && G2 - B2 >= -15 && G2 - B2 <= 60) burst++; }
+          if (burst > b.n * 0.6 || burst > tot * 0.15) continue;
+        }
         const bw = b.x1 - b.x0 + 1, bh = b.y1 - b.y0 + 1;
         if (bh < bw * 1.2) continue;   // 光柱是直的，數字、圖示不算
         const x = b.x / b.n, y = b.y1 - 2, dx = (x - cx) * SC, dy = (y - cy) * SC, dd = Math.hypot(dx, dy);
@@ -328,7 +333,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 10 : 14) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(520px,70vw)') + ';max-height:78vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23f'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23g'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -544,8 +549,8 @@
       if (lt && now > lootIgnore) {
         lootLast = lt; if (!lootStart) { lootStart = now; log('看到' + (lt.gold ? '金光' : '紫光') + '，過去撿'); }
         if (typeof chestMark === 'function') chestMark(lt);
-        if (lt.dd < 90) { lootUntil = now + 900; lootIgnore = lootUntil + 1500; lootStart = 0; lootRes = null; return; }
-        if (now - lootStart > 7000) { lootIgnore = now + 5000; lootStart = 0; log('撿不到，先放棄'); }
+        if (lt.dd < 90) { lootUntil = now + 900; lootIgnore = lootUntil + 1500; lootStart = 0; lootRes = null; lootFails = 0; return; }
+        if (now - lootStart > 7000) { lootFails++; const wait = Math.min(60000, 5000 * 2 ** (lootFails - 1)); lootIgnore = now + wait; lootStart = 0; log('撿不到，先放棄 ' + Math.round(wait / 1000) + ' 秒'); }
         else { setState('跑去撿掉落'); const k = []; if (lt.dy < -12) k.push('ArrowUp'); if (lt.dy > 12) k.push('ArrowDown'); if (lt.dx < -12) k.push('ArrowLeft'); if (lt.dx > 12) k.push('ArrowRight'); hold(k); return; }
       } else lootStart = 0;
     }
@@ -559,6 +564,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-23f 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-23g 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
