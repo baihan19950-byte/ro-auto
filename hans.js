@@ -231,7 +231,7 @@
   // ---- 主迴圈 ----
   // ---- 撿紫光／金光掉落 ----
   const lootOff = document.createElement('canvas'); const lootCtx = lootOff.getContext('2d', { willReadFrequently: true });
-  let lootFails = 0, lootLast = null, lootRes = null, lootBusy = false, lastLootScan = 0, lootStart = 0, lootIgnore = 0, lootUntil = 0;
+  const lootHist = []; let lootFails = 0, lootLast = null, lootRes = null, lootBusy = false, lastLootScan = 0, lootStart = 0, lootIgnore = 0, lootUntil = 0;
   const scanLoot = () => {
     if (lootBusy) return; lootBusy = true;
     requestAnimationFrame(() => {
@@ -274,7 +274,12 @@
         const sc = dd - (b.g > b.n / 2 ? 300 : 0);   // 金光優先
         if (sc < bd) { bd = sc; best = { dx, dy, dd, gold: b.g > b.n / 2, sx: r.x + x * SC, sy: r.y + y * SC }; }
       }
-      lootRes = best; window.__roLoot = best;
+      // 要連續幾次都在差不多的位置看到才算（傷害數字、特效一閃就不見，掉落物會一直在）
+      const nowT = Date.now(); lootHist.push({ t: nowT, b: best }); while (lootHist.length && nowT - lootHist[0].t > 1600) lootHist.shift();
+      const near = (a2, b2) => a2 && b2 && Math.hypot(a2.sx - b2.sx, a2.sy - b2.sy) < 45;
+      const seenCnt = best ? lootHist.filter(h2 => near(h2.b, best)).length : 0;
+      const oldest = best ? lootHist.find(h2 => near(h2.b, best)) : null;
+      lootRes = (lootStart || (seenCnt >= 4 && oldest && nowT - oldest.t >= 900)) ? best : null; window.__roLoot = best;
     });
   };
   let lastSpeed = 0, lastPick = 0, pickTries = 0, acceptTries = 0; let state = '', circleI = 0, lastCircle = 0, lastAct = 0, walkStart = 0, randUntil = 0;
@@ -333,7 +338,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 10 : 14) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(520px,70vw)') + ';max-height:78vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23i'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23j'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -564,6 +569,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-23i 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-23j 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
