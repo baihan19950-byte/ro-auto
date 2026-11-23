@@ -279,7 +279,8 @@
     });
   };
   let lastSpeed = 0, lastPick = 0, pickTries = 0, acceptTries = 0; const chOff = document.createElement('canvas'); const chCtx = chOff.getContext('2d', { willReadFrequently: true }); let chestRes = null, chestScanBusy = false, lastChestScan = 0, chestUntil = 0, chestIgnore = 0, chestStart = 0; const chestMark = (c) => { if (!CFG.chestShow) return; let m = document.getElementById('ro-chest'); if (!m) { m = document.createElement('div'); m.id = 'ro-chest'; m.style.cssText = 'position:fixed;width:40px;height:40px;border:3px solid red;border-radius:6px;pointer-events:none;z-index:2147483646'; document.body.appendChild(m); } m.style.left = (c.sx - 20) + 'px'; m.style.top = (c.sy - 20) + 'px'; m.style.display = 'block'; clearTimeout(m._t); m._t = setTimeout(() => { m.style.display = 'none'; }, 500); }; const scanChest = () => { if (chestScanBusy) return; chestScanBusy = true; requestAnimationFrame(() => { chestScanBusy = false; lastChestScan = Date.now(); const cv = document.querySelector('canvas.world3d') || document.querySelector('canvas'); if (!cv) { chestRes = null; return; } const r = cv.getBoundingClientRect(), SC = 3; const w = Math.max(1, Math.round(r.width / SC)), h = Math.max(1, Math.round(r.height / SC)); chOff.width = w; chOff.height = h; try { chCtx.drawImage(cv, 0, 0, w, h); } catch (e) { chestRes = null; return; } const d = chCtx.getImageData(0, 0, w, h).data; let chLit = 0; const gl = new Uint8Array(w * h); const cells = new Map(); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y * w + x) * 4, R = d[i], G = d[i + 1], B = d[i + 2]; if (R + G + B > 30) chLit++; if (R >= 150 && G >= 135 && Math.abs(R - G) <= 30 && R - B >= 60) gl[y * w + x] = 1; const dayC = R > 90 && R < 235 && R - G >= 30 && G >= B - 5 && R - B >= 45 && R >= G * 1.3 && R <= G * 2.3; const nightC = R >= 55 && R <= 135 && R - G >= 10 && R - G <= 35 && B - G >= -3 && B - G <= 14 && R - B >= 3; if (!dayC && !nightC) continue; const key = ((x / 3) | 0) + ',' + ((y / 3) | 0); const c = cells.get(key) || { n: 0, x: 0, y: 0, my: 0 }; c.n++; c.x += x; c.y += y; if (y > c.my) c.my = y; cells.set(key, c); } if (chLit < w * h * 0.1) { if (!window.__roBlankWarn) { window.__roBlankWarn = 1; log('讀不到遊戲畫面，箱子功能無效'); } chestRes = null; return; } const seen = new Set(); let best = null, bd = 1e9; const cx = w / 2, cy = h / 2; for (const [key] of cells) { if (seen.has(key)) continue; seen.add(key); const b = { n: 0, x: 0, y: 0, my: 0 }, st = [key]; while (st.length) { const kk = st.pop(), cc = cells.get(kk); b.n += cc.n; b.x += cc.x; b.y += cc.y; if (cc.my > b.my) b.my = cc.my; const [gx, gy] = kk.split(',').map(Number); for (let ax = -1; ax <= 1; ax++) for (let ay = -1; ay <= 1; ay++) { const nk = (gx + ax) + ',' + (gy + ay); if (!seen.has(nk) && cells.has(nk)) { seen.add(nk); st.push(nk); } } } if (b.n < 12 || b.n > 400) continue; const x = b.x / b.n, y = b.y / b.n; const dx = (x - cx) * SC, dy = (y - cy) * SC, dd = Math.hypot(dx, dy); if (dd < 55) continue; let g = 0; for (let gy = b.my - 3; gy <= b.my + 5; gy++) for (let gx = (x | 0) - 6; gx <= (x | 0) + 6; gx++) if (gx >= 0 && gy >= 0 && gx < w && gy < h && gl[gy * w + gx]) g++; const sc = dd - (g >= 5 ? 250 : 0); if (sc < bd) { bd = sc; best = { dx, dy, n: b.n, g, sx: r.x + x * SC, sy: r.y + y * SC }; } } chestRes = best; }); };  let state = '', circleI = 0, lastCircle = 0, lastAct = 0, walkStart = 0, randUntil = 0;
-  const setState = (s) => { if (s !== state) { state = s; log('狀態：' + s); } };
+  const resetRun = () => { swapDone = false; banished.clear(); focused.clear(); };
+  const setState = (s) => { if (s !== state) { if (/遠征視窗|難度視窗|高難度提醒|結算|未完待續|角色選擇/.test(s)) resetRun(); state = s; log('狀態：' + s); } };
   let paused = false;
   window.roToggle = () => {
     paused = !paused;
@@ -334,7 +335,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 10 : 14) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(520px,70vw)') + ';max-height:78vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23j'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23k'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -381,7 +382,7 @@
         }
         Object.assign(CFG, out);
         try { localStorage.setItem(CFG_KEY, JSON.stringify(out)); } catch (e) {}
-        close(); log('設定已儲存');
+        resetRun(); close(); log('設定已儲存（專注／放逐重新計算）');
       });
       btn('取消', '#888', close);
       btn('恢復預設', '#c44', () => { try { localStorage.removeItem(CFG_KEY); } catch (e) {} location.reload(); });
@@ -538,6 +539,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-23j 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-23k 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
