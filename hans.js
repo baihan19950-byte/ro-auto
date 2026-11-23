@@ -268,9 +268,9 @@
           if (burst > b.n * 0.6 || burst > tot * 0.15) continue;
         }
         const bw = b.x1 - b.x0 + 1, bh = b.y1 - b.y0 + 1;
-        if (bh < bw * 1.2) continue;   // 光柱是直的，數字、圖示不算
+        if (bh < bw * (b.g > b.n / 2 ? 1.6 : 1.2)) continue;   // 光柱是直的，數字、圖示不算
         const x = b.x / b.n, y = b.y1 - 2, dx = (x - cx) * SC, dy = (y - cy) * SC, dd = Math.hypot(dx, dy);
-        if (dd < 70) continue;   // 角色自己
+        if (dd < 120) continue;   // 角色自己和身邊的特效
         const sc = dd - (b.g > b.n / 2 ? 300 : 0);   // 金光優先
         if (sc < bd) { bd = sc; best = { dx, dy, dd, gold: b.g > b.n / 2, sx: r.x + x * SC, sy: r.y + y * SC }; }
       }
@@ -333,7 +333,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 10 : 14) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(520px,70vw)') + ';max-height:78vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23h'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23i'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -545,11 +545,11 @@
       if (now - lastLootScan > 300) scanLoot();
       if (now < lootUntil) { setState('撿掉落'); if (now > lootUntil - 400) release(); return; }
       const lt = lootRes;
-      if (!lt && lootStart && lootLast && lootLast.dd < 140) { lootUntil = now + 900; lootIgnore = lootUntil + 1500; lootStart = 0; lootLast = null; return; }   // 已經走到旁邊（光柱跟角色重疊），再往前一點撿起來
+      if (!lt && lootStart && lootLast && lootLast.dd < 180) { lootUntil = now + 900; lootIgnore = lootUntil + 1500; lootStart = 0; lootLast = null; return; }   // 已經走到旁邊（光柱跟角色重疊），再往前一點撿起來
       if (lt && now > lootIgnore) {
         lootLast = lt; if (!lootStart) { lootStart = now; log('看到' + (lt.gold ? '金光' : '紫光') + '，過去撿（' + Math.round(lt.sx) + ',' + Math.round(lt.sy) + '）'); }
         { let m = document.getElementById('ro-lootmark'); if (!m) { m = document.createElement('div'); m.id = 'ro-lootmark'; m.style.cssText = 'position:fixed;width:44px;height:44px;border:4px solid ' + (lt.gold ? '#fc0' : '#c0f') + ';border-radius:50%;pointer-events:none;z-index:2147483646'; document.body.appendChild(m); } m.style.borderColor = lt.gold ? '#fc0' : '#c0f'; m.style.left = (lt.sx - 22) + 'px'; m.style.top = (lt.sy - 22) + 'px'; m.style.display = 'block'; clearTimeout(m._t); m._t = setTimeout(() => { m.style.display = 'none'; }, 600); }
-        if (lt.dd < 90) { lootUntil = now + 900; lootIgnore = lootUntil + 1500; lootStart = 0; lootRes = null; lootFails = 0; return; }
+        if (lt.dd < 140) { lootUntil = now + 900; lootIgnore = lootUntil + 1500; lootStart = 0; lootRes = null; lootFails = 0; return; }
         if (now - lootStart > 7000) { lootFails++; const wait = Math.min(60000, 5000 * 2 ** (lootFails - 1)); lootIgnore = now + wait; lootStart = 0; log('撿不到，先放棄 ' + Math.round(wait / 1000) + ' 秒'); }
         else { setState('跑去撿掉落'); const k = []; if (lt.dy < -12) k.push('ArrowUp'); if (lt.dy > 12) k.push('ArrowDown'); if (lt.dx < -12) k.push('ArrowLeft'); if (lt.dx > 12) k.push('ArrowRight'); hold(k); return; }
       } else lootStart = 0;
@@ -564,6 +564,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-23h 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-23i 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
