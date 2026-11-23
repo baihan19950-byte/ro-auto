@@ -283,15 +283,16 @@
     }
     g.onclick = () => {
       let p = document.getElementById('ro-cfgpanel');
-      if (p) { p.remove(); return; }
+      if (p) { (p._close || (() => p.remove()))(); return; }
       const wasPaused = paused; paused = true; release();
+      const nav = document.createElement('div');
       p = document.createElement('div');
       p.id = 'ro-cfgpanel';
       const fs = SMALL ? 14 : 16;
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 10 : 14) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(520px,70vw)') + ';max-height:78vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23c'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23d'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -327,8 +328,9 @@
       const hist = document.createElement('div'); hist.style.cssText = 'margin:10px 0;padding:8px;background:#f3f3f3;border-radius:8px;font:' + (SMALL ? 11 : 12) + 'px monospace;max-height:30vh;overflow:auto;white-space:pre-wrap'; hist.textContent = '最近紀錄：\n' + (roHist.slice(-25).reverse().join('\n') || '（還沒有）'); p.appendChild(hist);
       const tip = document.createElement('div'); tip.textContent = '清單用逗號隔開，前面的優先。'; tip.style.cssText = 'color:#666;font-size:.8em;margin:6px 0 10px';
       p.appendChild(tip);
-      const close = () => { p.remove(); paused = wasPaused; if (!paused) { state = ''; log('繼續執行'); } else badge.textContent = 'RO自動：已暫停（點我繼續）'; };
-      const btn = (txt, bg, fn) => { const b = document.createElement('button'); b.textContent = txt; b.style.cssText = 'font:bold ' + fs + 'px sans-serif;padding:6px 14px;margin:4px 8px 0 0;border:0;border-radius:8px;color:#fff;background:' + bg + ';cursor:pointer'; b.onclick = fn; p.appendChild(b); };
+      const bar = document.createElement('div'); bar.style.cssText = 'position:sticky;bottom:-' + (SMALL ? 10 : 14) + 'px;background:#fff;padding:6px 0;border-top:1px solid #ddd;margin-top:6px';
+      const close = () => { p.remove(); nav.remove(); paused = wasPaused; if (!paused) { state = ''; log('繼續執行'); } else badge.textContent = 'RO自動：已暫停（點我繼續）'; };
+      const btn = (txt, bg, fn) => { const b = document.createElement('button'); b.textContent = txt; b.style.cssText = 'font:bold ' + fs + 'px sans-serif;padding:6px 14px;margin:4px 8px 0 0;border:0;border-radius:8px;color:#fff;background:' + bg + ';cursor:pointer'; b.onclick = fn; bar.appendChild(b); };
       btn('儲存', '#2a7', () => {
         const out = {};
         for (const k in inputs) {
@@ -341,7 +343,13 @@
       });
       btn('取消', '#888', close);
       btn('恢復預設', '#c44', () => { try { localStorage.removeItem(CFG_KEY); } catch (e) {} location.reload(); });
+      p.appendChild(bar); p._close = close;
       document.body.appendChild(p);
+      // 給手指用的大顆上下捲動鈕
+      const pr = p.getBoundingClientRect();
+      nav.style.cssText = 'position:fixed;z-index:2147483647;display:flex;flex-direction:column;gap:12px;top:' + (pr.top + 40) + 'px;left:' + Math.min(pr.right + 8, innerWidth - 76) + 'px';
+      for (const [t, d] of [['▲', -1], ['▼', 1]]) { const b = document.createElement('button'); b.textContent = t; b.style.cssText = 'width:' + (SMALL ? 52 : 68) + 'px;height:' + (SMALL ? 52 : 68) + 'px;font:bold ' + (SMALL ? 24 : 32) + 'px sans-serif;border:2px solid #fff;border-radius:12px;background:rgba(40,70,120,.9);color:#fff;cursor:pointer'; b.onclick = () => p.scrollBy({ top: d * p.clientHeight * 0.6, behavior: 'smooth' }); nav.appendChild(b); }
+      document.body.appendChild(nav);
     };
   })();
   const loop = () => {
@@ -488,6 +496,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-23c 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-23d 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
