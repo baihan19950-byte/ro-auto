@@ -21,6 +21,7 @@
     circle: true,       // false = 在地圖裡站著不動；true = 繞圈
     user: (window.RO_LOGIN || {}).user,
     pass: (window.RO_LOGIN || {}).pass,
+    skills: ['雙手劍', '狂擊', '霸體', '怒爆', '劍刃之舞', '反擊', '怪物互擊', '長矛', '劍', '短劍', '挑釁', '恐嚇吶喊', '快速恢復', '快速回復'],   // ⚙ 設定裡固定顯示的技能按鈕
     charName: '旗湘',
     server: '米德加德',   // 選伺服器時要點的伺服器
     speed: true,   // 進戰場後自動把 1x 切成 2x
@@ -137,7 +138,7 @@
     return best.closest('button') || best;
   };
   // ---- 記下看過的卡片名稱、地圖名稱（給 ⚙ 設定用按鈕點選）----
-  const SEEN_KEY = 'roSeen_' + location.host + '_' + CFG.charName, MAPS_KEY = 'roMaps_' + location.host;
+  const SEEN_KEY = 'roSkill_' + location.host + '_' + CFG.charName, CHEST_KEY = 'roChest_' + location.host + '_' + CFG.charName, MAPS_KEY = 'roMaps_' + location.host;
   const loadArr = (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { return []; } };
   const addSeen = (k, names) => { const a = loadArr(k); let ch = false; for (const n of names) if (n && !a.includes(n)) { a.push(n); ch = true; } if (ch) { while (a.length > 80) a.shift(); try { localStorage.setItem(k, JSON.stringify(a)); } catch (e) {} } };
   const SKIP_WORDS = /^(普通|優良|精良|稀有|史詩|傳說|神話|技能|最新|新|專注|放逐|Lv|LV|\d)/;
@@ -165,7 +166,7 @@
     pickBusy = true;
     setTimeout(() => {
       const live = cards();
-      addSeen(SEEN_KEY, live.map(cardName));
+      addSeen(/Level\s*Up/i.test(document.body.innerText) ? SEEN_KEY : CHEST_KEY, live.map(cardName));
       if (live.length) {
         let ranked = live.map(c => ({ c, ...score(c) })).sort((a, b) => b.s - a.s); const ok = ranked.filter(r => !CFG.avoid.some(k => r.t.includes(k))); if (ok.length) ranked = ok;
         let pick = null, why = '分數最高';
@@ -296,7 +297,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 10 : 14) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(520px,70vw)') + ';max-height:78vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23d'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-23e'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -309,10 +310,10 @@
         inputs[k] = [inp, type];
 
         // 可點選的小按鈕：點一下加入／拿掉，不用打字
-        const opts = { must: SEEN_KEY, focusOn: SEEN_KEY, banish: SEEN_KEY, avoid: SEEN_KEY, chestMust: SEEN_KEY, map: MAPS_KEY }[k];
+        const opts = { must: SEEN_KEY, focusOn: SEEN_KEY, banish: SEEN_KEY, avoid: SEEN_KEY, chestMust: CHEST_KEY, map: MAPS_KEY }[k];
         const fixed = { lobby: ['阿斯嘉特', '米德加德', '亞爾夫海姆界', '華納海姆', '約頓海姆'], pickup: ['全部', '史詩以上'], loot: ['紫', '金'] }[k];
         const KNOWN_MAPS = ['普隆德拉原野', '普隆德拉地下水道', '失事輪', '柏伊亞嵐島', '斐揚森林', '夢羅克金字塔', '迷宮森林'];
-        const names = fixed || (opts ? [...new Set([...(k === 'map' ? KNOWN_MAPS : []), ...(Array.isArray(CFG[k]) ? CFG[k] : [CFG[k]]).filter(Boolean), ...loadArr(opts)])] : null);
+        const names = fixed || (opts ? [...new Set([...(k === 'map' ? KNOWN_MAPS : opts === SEEN_KEY ? (CFG.skills || []) : []), ...(Array.isArray(CFG[k]) ? CFG[k] : [CFG[k]]).filter(Boolean), ...loadArr(opts)])] : null);
         if (names && type !== 'bool') {
           const box = document.createElement('div'); box.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:6px';
           const cur = () => type === 'list' ? inp.value.split(/[,，、\s]+/).filter(Boolean) : [inp.value.trim()];
@@ -527,6 +528,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-23d 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-23e 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
