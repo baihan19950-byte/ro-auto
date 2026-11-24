@@ -232,6 +232,18 @@
       for (let i = list.length; i < navs.length; i++) navs[i].style.display = 'none';
     }, 800);
   })();
+  // 地圖名稱有「・改」＝二周目，沒有＝一周目；找不到地圖時先切到對的周目分頁
+  let mapMiss = 0;
+  const pickMap = () => {
+    if (!CFG.map) return true;
+    const nm = (t) => t.replace(/[·・•‧･．.]/g, '・').replace(/\s+/g, '');
+    const m = findText(CFG.map) || [...document.querySelectorAll('div, span, p, b, strong')].filter(e => vis(e) && nm(e.textContent) === nm(CFG.map)).sort((a2, b2) => area(a2) - area(b2))[0];
+    if (m) { mapMiss = 0; m.click(); log('選地圖', CFG.map); return true; }
+    const tab = findText(/・改\s*$/.test(CFG.map) ? '二周目' : '一周目');
+    mapMiss++;
+    if (tab && mapMiss <= 3) { log('切到 ' + tab.textContent.trim() + ' 找 ' + CFG.map); tab.click(); return false; }
+    log('找不到地圖 ' + CFG.map); return mapMiss > 3;   // 試 3 次還找不到就照目前選的出發，避免卡死
+  };
   // ---- 主迴圈 ----
   // ---- 撿紫光／金光掉落 ----
   const lootOff = document.createElement('canvas'); const lootCtx = lootOff.getContext('2d', { willReadFrequently: true });
@@ -343,7 +355,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 10 : 14) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(520px,70vw)') + ';max-height:78vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-24b'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-25b'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -358,7 +370,7 @@
         // 可點選的小按鈕：點一下加入／拿掉，不用打字
         const opts = { must: SEEN_KEY, focusOn: SEEN_KEY, banish: SEEN_KEY, avoid: SEEN_KEY, chestMust: CHEST_KEY, map: MAPS_KEY }[k];
         const fixed = { lobby: ['阿斯嘉特', '米德加德', '亞爾夫海姆界', '華納海姆', '約頓海姆'], pickup: ['全部', '史詩以上'], loot: ['紫', '金'] }[k];
-        const KNOWN_MAPS = ['普隆德拉原野', '普隆德拉地下水道', '失事輪', '柏伊亞嵐島', '斐揚森林', '斐揚洞穴', '普隆德拉城', '獸人村', '夢羅克金字塔', '迷宮森林', '聖誕節', '元宵燈會'];
+        const KNOWN_MAPS = ['普隆德拉原野', '普隆德拉地下水道', '失事輪', '柏伊亞嵐島', '斐揚森林', '斐揚洞穴', '普隆德拉城', '獸人村', '夢羅克金字塔', '迷宮森林', '聖誕節', '元宵燈會', '普隆德拉原野・改', '普隆德拉地下水道・改', '失事輪・改', '柏伊亞嵐島・改', '斐揚森林・改', '斐揚洞穴・改', '普隆德拉城・改', '獸人村・改', '夢羅克金字塔・改', '迷宮森林・改'];
         const names = fixed || (opts ? [...new Set([...(k === 'map' ? KNOWN_MAPS : opts === SEEN_KEY ? (CFG.skills || []) : []), ...(Array.isArray(CFG[k]) ? CFG[k] : [CFG[k]]).filter(Boolean), ...loadArr(opts)])] : null);
         if (names && type !== 'bool') {
           const box = document.createElement('div'); box.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:6px';
@@ -490,7 +502,7 @@
     // 遠征視窗開著但沒有「出發」（例如右邊停在劇情）→ 先點地圖
     if (findText('你的裝備評分', false) && !findText('出發') && !findText('選擇大廳')) {
       release(); setState('遠征視窗：選地圖');
-      if (now - lastAct > 1500) { lastAct = now; const m = CFG.map && findText(CFG.map); if (m) { log('選地圖', CFG.map); m.click(); } else log('找不到地圖 ' + CFG.map); }
+      if (now - lastAct > 1500) { lastAct = now; pickMap(); }
       return;
     }
     const go = findText('出發');
@@ -498,8 +510,7 @@
       release(); setState('遠征視窗');
       if (now - lastAct > 1500) {
         lastAct = now;
-        if (CFG.map) { const m = findText(CFG.map); if (m) { m.click(); log('選地圖', CFG.map); } }
-        setTimeout(() => { log('點 出發'); go.click(); }, 500);
+        if (pickMap()) setTimeout(() => { log('點 出發'); go.click(); }, 500);
       }
       return;
     }
@@ -547,6 +558,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-24b 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-25b 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
