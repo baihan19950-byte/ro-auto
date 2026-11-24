@@ -197,35 +197,43 @@
     }, 600);
   };
 
-  // ---- 遊戲裡的視窗（背包等）可以捲動時，右邊出現大顆 ▲▼ ----
+  // ---- 遊戲裡的視窗（背包、遠征地圖清單等）可以捲動時，每一塊旁邊都出現大顆 ▲▼ ----
   (() => {
-    let nav = document.getElementById('ro-gnav');
-    if (!nav) {
-      nav = document.createElement('div'); nav.id = 'ro-gnav';
-      nav.style.cssText = 'position:fixed;right:' + (SMALL ? 6 : 10) + 'px;top:30%;z-index:2147483646;display:none;flex-direction:column;gap:12px';
+    document.querySelectorAll('.ro-gnav').forEach(e => e.remove());
+    const navs = [];
+    const mkNav = () => {
+      const nav = document.createElement('div'); nav.className = 'ro-gnav';
+      nav.style.cssText = 'position:fixed;z-index:2147483646;display:none;flex-direction:column;gap:8px';
       for (const [t, d] of [['▲', -1], ['▼', 1]]) {
         const b = document.createElement('button'); b.textContent = t;
-        b.style.cssText = 'width:' + (SMALL ? 48 : 68) + 'px;height:' + (SMALL ? 48 : 68) + 'px;font:bold ' + (SMALL ? 22 : 32) + 'px sans-serif;border:2px solid #fff;border-radius:12px;background:rgba(40,70,120,.85);color:#fff;cursor:pointer';
-        b.onclick = () => { const el = nav._target; if (el) el.scrollBy({ top: d * el.clientHeight * 0.6, behavior: 'smooth' }); };
+        b.style.cssText = 'width:' + (SMALL ? 42 : 56) + 'px;height:' + (SMALL ? 42 : 56) + 'px;font:bold ' + (SMALL ? 20 : 26) + 'px sans-serif;border:2px solid #fff;border-radius:10px;background:rgba(40,70,120,.85);color:#fff;cursor:pointer';
+        b.onclick = (ev) => { ev.stopPropagation(); const el = nav._target; if (el) el.scrollBy({ top: d * el.clientHeight * 0.6, behavior: 'smooth' }); };
         nav.appendChild(b);
       }
-      document.body.appendChild(nav);
-    }
-    const findScroller = () => {
-      let best = null, ba = 0;
+      document.body.appendChild(nav); navs.push(nav); return nav;
+    };
+    const findScrollers = () => {
+      const out = [];
       for (const el of document.querySelectorAll('div, ul, section, main')) {
         if (el.scrollHeight - el.clientHeight < 40 || el.clientHeight < 80) continue;
         if (el.closest('#ro-cfgpanel')) continue;
         const oy = getComputedStyle(el).overflowY; if (oy !== 'auto' && oy !== 'scroll') continue;
         const r = el.getBoundingClientRect(); if (r.width < 100 || r.bottom < 0 || r.top > innerHeight) continue;
-        const a = r.width * r.height; if (a > ba) { ba = a; best = el; }
+        out.push({ el, r });
       }
-      return best;
+      // 外層包內層時只留內層，避免同一塊出現兩組
+      return out.filter(a => !out.some(b => b !== a && a.el.contains(b.el) && b.r.width * b.r.height > a.r.width * a.r.height * 0.6)).slice(0, 4);
     };
     clearInterval(window.__roGnav);
     window.__roGnav = setInterval(() => {
-      const t = document.getElementById('ro-cfgpanel') ? null : findScroller();
-      nav._target = t; nav.style.display = t ? 'flex' : 'none';
+      const list = document.getElementById('ro-cfgpanel') ? [] : findScrollers();
+      list.forEach((s, i) => {
+        const nav = navs[i] || mkNav(), sz = SMALL ? 42 : 56;
+        nav._target = s.el; nav.style.display = 'flex';
+        nav.style.left = Math.max(4, Math.min(innerWidth - sz - 6, s.r.right - sz - 6)) + 'px';
+        nav.style.top = Math.max(4, Math.min(innerHeight - sz * 2 - 14, s.r.top + Math.min(40, s.r.height / 4))) + 'px';
+      });
+      for (let i = list.length; i < navs.length; i++) navs[i].style.display = 'none';
     }, 800);
   })();
   // ---- 主迴圈 ----
@@ -339,7 +347,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 10 : 14) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(520px,70vw)') + ';max-height:78vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-24a'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-24b'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -570,6 +578,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-24a 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-24b 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
