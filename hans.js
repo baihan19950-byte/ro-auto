@@ -359,7 +359,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 10 : 14) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(520px,70vw)') + ';max-height:78vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-25b'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-27a'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -517,10 +517,12 @@
       release(); setState('選擇大廳');
       if (now - lastAct > 2000) {
         lastAct = now;
-        const want = CFG.lobby;
-        const el = want && [...document.querySelectorAll('button, li, a, div, span')].filter(e => vis(e) && e.textContent.includes(want) && e.textContent.trim().length <= 30).sort((a, b) => area(a) - area(b))[0];
-        if (el) { log('選大廳 ' + want); (el.closest('button, li, a, [role=button]') || el).click(); }
-        else log('找不到大廳 ' + want + '，請在 ⚙ 設定填「大廳」');
+        // 先找設定的大廳；沒有的話（例如暫時關閉）就依序找其他大廳
+        const order = [CFG.lobby, '米德加德', '阿斯嘉特', '亞爾夫海姆界', '華納海姆', '約頓海姆'].filter(Boolean);
+        let el = null, want = '';
+        for (const w of order) { el = [...document.querySelectorAll('button, li, a, div, span')].filter(e => vis(e) && e.textContent.includes(w) && e.textContent.trim().length <= 30).sort((a, b) => area(a) - area(b))[0]; if (el) { want = w; break; } }
+        if (el) { log('選大廳 ' + want + (want !== CFG.lobby ? '（' + CFG.lobby + ' 不在清單上）' : '')); (el.closest('button, li, a, [role=button]') || el).click(); }
+        else log('找不到任何大廳');
       }
       return;
     }
@@ -589,6 +591,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-25b 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-27a 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
