@@ -7,15 +7,15 @@
     lobby: '米德加德',   // 出現「選擇大廳」時要點的大廳
     pickup: '全部',   // 戰鬥中「撿取：」要切到這個（空白＝不動）
     loot: ['紫', '金'],   // 看到這些顏色的光柱就跑過去撿（紫、金）
-    must: ['天使之光', '神聖之光', '治癒術', '天使之淚', '天使之賜福', '十字驅魔攻擊', '聖之祈福'],
-    banish: ['光獵', '緩速術'],   // 出現時各點一次「放逐」
+    must: ['天使之光', '神聖之光', '治癒術', '天使之淚', '天使之賜福', '十字驅魔攻擊', '聖之祈福', '光獵'],
+    banish: ['緩速術'],   // 出現時各點一次「放逐」
     focusOn: ['天使之光', '神聖之光'],    // 每局第一次出現這張卡時，先點它下面的「專注」按鈕
     chestMust: ['採集', '豐收', '驚奇', '堅壁之神', '護甲', '吸血', '傷害'],
     rarity: { '傳說': 400, '神話': 400, '史詩': 300, '稀有': 200, '優良': 150, '精良': 150, '技能': 100, '普通': 50 },
     newSkillBonus: 120,
     prefer: ['傷害', '攻擊速度', '目標'],
     preferBase: 200,
-    avoid: ['光獵', '緩速術'],
+    avoid: ['緩速術'],
     chest: true, chestStopMs: 5000, chestNear: 70, chestShow: true,   // 看到箱子跑過去（同二羽），到了停 5 秒；不繞圈
     user: (window.RO_LOGIN || {}).user,
     pass: (window.RO_LOGIN || {}).pass,
@@ -355,7 +355,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 10 : 14) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(520px,70vw)') + ';max-height:78vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-27f'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-27g'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -581,6 +581,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-27f 已啟動'); console.log('[RO] 全自動已啟動（選卡＋追箱子＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-27g 已啟動'); console.log('[RO] 全自動已啟動（選卡＋追箱子＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
