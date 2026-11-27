@@ -1,4 +1,4 @@
-// RO 倖存者 全自動：左膳 服事 漢斯（設定先沿用旗湘）
+// RO 倖存者 全自動：服事 漢斯（角色 伴讀小書童；檔名沿用左膳）
 // 由載入器（篡改猴或 iPhone 書籤）從 GitHub 讀取執行；帳密不放在這裡。
 (() => {
   window.stopAll?.(); window.stopAutoPick?.(); window.stopCircle?.();
@@ -20,7 +20,7 @@
     user: (window.RO_LOGIN || {}).user,
     pass: (window.RO_LOGIN || {}).pass,
     skills: ['天使之光', '神聖之光', '治癒術', '天使之淚', '天使之賜福', '十字驅魔攻擊', '聖之祈福', '聖擊', '光獵', '緩速術', '鈍器'],   // ⚙ 設定裡固定顯示的技能按鈕
-    charName: '左膳',
+    charName: '伴讀小書童',   // 角色選擇畫面上的名字（帳號 abcd3310）
     server: '米德加德',   // 選伺服器時要點的伺服器
     speed: true,   // 進戰場後自動把 1x 切成 2x
     log: true,
@@ -134,7 +134,7 @@
     return best.closest('button') || best;
   };
   // ---- 記下看過的卡片名稱、地圖名稱（給 ⚙ 設定用按鈕點選）----
-  const SEEN_KEY = 'roSkill_' + location.host + '_' + CFG.charName, CHEST_KEY = 'roChest_' + location.host + '_' + CFG.charName, MAPS_KEY = 'roMaps_' + location.host;
+  const SEEN_KEY = 'roSkill_' + location.host + '_左膳', CHEST_KEY = 'roChest_' + location.host + '_左膳', MAPS_KEY = 'roMaps_' + location.host;
   const loadArr = (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { return []; } };
   const addSeen = (k, names) => { const a = loadArr(k); let ch = false; for (const n of names) if (n && !a.includes(n)) { a.push(n); ch = true; } if (ch) { while (a.length > 80) a.shift(); try { localStorage.setItem(k, JSON.stringify(a)); } catch (e) {} } };
   const SKIP_WORDS = /^(普通|優良|精良|稀有|史詩|傳說|神話|技能|最新|新|專注|放逐|Lv|LV|\d)/;
@@ -355,7 +355,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 10 : 14) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(520px,70vw)') + ';max-height:78vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-27e'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-27f'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -581,6 +581,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-27e 已啟動'); console.log('[RO] 全自動已啟動（選卡＋追箱子＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-27f 已啟動'); console.log('[RO] 全自動已啟動（選卡＋追箱子＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
