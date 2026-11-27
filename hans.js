@@ -359,7 +359,7 @@
       p.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;color:#222;font:' + fs + 'px sans-serif;padding:' + (SMALL ? 10 : 14) + 'px;border-radius:12px;border:3px solid #346;box-shadow:0 6px 30px rgba(0,0,0,.5);width:' + (SMALL ? '92vw' : 'min(520px,70vw)') + ';max-height:78vh;overflow:auto;box-sizing:border-box';
       ['keydown', 'keyup', 'keypress'].forEach(t => p.addEventListener(t, e => e.stopPropagation()));
       const title = document.createElement('div');
-      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-27c'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
+      title.textContent = 'RO 自動設定（' + CFG.charName + '）版本 2026-11-27d'; title.style.cssText = 'font-weight:bold;font-size:1.15em;margin-bottom:10px';
       p.appendChild(title);
       const inputs = {};
       for (const [k, label, type] of CFG_FIELDS) {
@@ -518,11 +518,15 @@
       if (now - lastAct > 2000) {
         lastAct = now;
         // 先找設定的大廳；沒有的話（例如暫時關閉）就依序找其他大廳
-        const order = [CFG.lobby, '米德加德', '阿斯嘉特', '亞爾夫海姆界', '華納海姆', '約頓海姆'].filter(Boolean);
-        let el = null, want = '';
-        for (const w of order) { el = [...document.querySelectorAll('button, li, a, div, span')].filter(e => vis(e) && e.textContent.includes(w) && e.textContent.trim().length <= 30).sort((a, b) => area(a) - area(b))[0]; if (el) { want = w; break; } }
-        if (el) { log('選大廳 ' + want + (want !== CFG.lobby ? '（' + CFG.lobby + ' 不在清單上）' : '')); (el.closest('button, li, a, [role=button]') || el).click(); }
-        else log('找不到任何大廳');
+        const order = [...new Set([CFG.lobby, '米德加德', '阿斯嘉特', '亞爾夫海姆界', '華納海姆', '約頓海姆'].filter(Boolean))];
+        // 往上找到包含狀態（已滿／正常／擁擠）的那一列；已滿的跳過，正常優先於擁擠
+        const rowOf = (e) => { let r = e; for (let i = 0; i < 6 && r.parentElement && !/已滿|正常|擁擠|關閉|維護/.test(r.textContent); i++) r = r.parentElement; return r; };
+        const found = [];
+        for (const w of order) { const e = [...document.querySelectorAll('button, li, a, div, span')].filter(x => vis(x) && x.textContent.includes(w) && x.textContent.trim().length <= 30).sort((a, b) => area(a) - area(b))[0]; if (!e) continue; const st = rowOf(e).textContent; found.push({ w, e, rank: /已滿|關閉|維護/.test(st) ? 9 : /擁擠/.test(st) ? 1 : 0 }); }
+        const ok = found.filter(f => f.rank < 9);
+        const pickL = ok.find(f => f.w === CFG.lobby) || ok.sort((a, b) => a.rank - b.rank)[0];
+        if (pickL) { const why = pickL.w === CFG.lobby ? '' : (found.some(f => f.w === CFG.lobby) ? '（' + CFG.lobby + ' 已滿）' : '（' + CFG.lobby + ' 不在清單上）'); log('選大廳 ' + pickL.w + why); (pickL.e.closest('button, li, a, [role=button]') || pickL.e).click(); }
+        else log(found.length ? '大廳都滿了，稍後再試' : '找不到任何大廳');
       }
       return;
     }
@@ -591,6 +595,6 @@
   };
   const timer = setInterval(loop, 200);
   window.stopAll = () => { clearInterval(timer); release(); delete window.stopAll; console.log('[RO] 全部停止'); badge.textContent = 'RO自動：已停止'; };
-  log('版本 2026-11-27c 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
+  log('版本 2026-11-27d 已啟動'); console.log('[RO] 全自動已啟動（選卡＋繞圈＋自動再出發＋防暫停）。stopAll() 停止，dim(0.7) 調暗，dim(0) 恢復');
 })();
 
